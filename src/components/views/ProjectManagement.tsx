@@ -902,6 +902,9 @@ export function ProjectManagement() {
         projectName={projects.find(p => p.id === versionsProjectId)?.name}
         shipType={projects.find(p => p.id === versionsProjectId)?.shipType}
         onClose={() => setVersionsProjectId(null)} 
+        onProjectStatusChange={(projId, newStatus) => {
+          setProjects(prev => prev.map(p => p.id === projId ? { ...p, status: newStatus } : p));
+        }}
       />
     </div>
   );

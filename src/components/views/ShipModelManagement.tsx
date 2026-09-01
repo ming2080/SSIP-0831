@@ -32,7 +32,7 @@ interface ShipModel {
   id: string;
   name: string;
   type: string;
-  category: string;
+  shipScale: '大型' | '小型'; // 类型：大型、小型
   description: string;
   thumbnail: string;
   lodLevel: string;
@@ -55,7 +55,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-001',
     name: '17.4万m³ 薄膜型大型LNG船',
     type: 'LNG液化天然气船',
-    category: '清洁能源运输',
+    shipScale: '大型',
     description: '采用 GTT NO96 薄膜型绝热货舱系统，具有高安全、低蒸发率的 3D 全舱段高精度数字孪生模型。',
     thumbnail: lngModelBg,
     lodLevel: 'LOD 400 (施工级)',
@@ -76,7 +76,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-002',
     name: '24,000 TEU 超大型集装箱船',
     type: '超大型集装箱船',
-    category: '集装箱班轮',
+    shipScale: '大型',
     description: '全球顶级装载量集装箱船 3D 模型，完整包含 24 层集装箱导轨架、系泊甲板及双岛式上层建筑网格。',
     thumbnail: containerModelBg,
     lodLevel: 'LOD 350',
@@ -97,7 +97,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-003',
     name: '30万吨 VLCC 超大型原油船',
     type: '超大型油轮 (VLCC)',
-    category: '液体散货',
+    shipScale: '大型',
     description: '双壳双底结构 3D 数字模型，精细刻画 15 个货油舱、双层底压载舱及主甲板复杂管系走线。',
     thumbnail: tankerModelBg,
     lodLevel: 'LOD 400',
@@ -118,7 +118,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-004',
     name: '82,000 DWT 卡姆萨尔型散货船',
     type: '卡姆萨尔型散货船',
-    category: '干散货运输',
+    shipScale: '大型',
     description: '标准节能型大开口散货船 3D 孪生数模，包含 7 个独立货舱、液压舱盖及船台搭载分段基准点。',
     thumbnail: bulkModelBg,
     lodLevel: 'LOD 300',
@@ -139,7 +139,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-005',
     name: '75M 动力定位平台供应船',
     type: '平台供应船 (PSV)',
-    category: '海洋工程',
+    shipScale: '小型',
     description: '配备 DP-2 动力定位系统，具备 650㎡ 开阔后甲板与散装泥浆/燃油输送系统 3D 数字仿真体。',
     thumbnail: psvModelBg,
     lodLevel: 'LOD 350',
@@ -160,7 +160,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-006',
     name: '69.8M 海上风电运维工作船',
     type: '风电运维船 (SOV)',
-    category: '海上风电装备',
+    shipScale: '小型',
     description: '双体高速耐波浪船型 3D 渲染模型，集成 3D 波浪补偿登乘栈桥与海上物资吊装回转吊机。',
     thumbnail: workboatModelBg,
     lodLevel: 'LOD 400',
@@ -181,7 +181,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-007',
     name: '37米 多用途海洋工程支持船',
     type: '多用途支持船 (AHTS)',
-    category: '海工辅助',
+    shipScale: '小型',
     description: '灵活的多功能近海工作船 3D 模型，支持拖拽、抛锚、潜水支持及小规模物资补给。',
     thumbnail: supportModelBg,
     lodLevel: 'LOD 300',
@@ -202,7 +202,7 @@ const mockShipModels: ShipModel[] = [
     id: 'M-008',
     name: '18500 DWT 绿色节能油化船',
     type: '不锈钢化学品船',
-    category: '特种危化运输',
+    shipScale: '小型',
     description: 'IMO II 类化学品船 3D 高精度模型，具备独立双相不锈钢货舱、深井泵及全船防爆监测感知节点。',
     thumbnail: chemTankerModelBg,
     lodLevel: 'LOD 350',
@@ -224,17 +224,14 @@ const mockShipModels: ShipModel[] = [
 export function ShipModelManagement() {
   const [selectedModel, setSelectedModel] = useState<ShipModel | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('全部');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
-  const categories = ['全部', '清洁能源运输', '集装箱班轮', '液体散货', '干散货运输', '海洋工程', '海上风电装备', '特种危化运输'];
+  const [selectedScale, setSelectedScale] = useState<'全部' | '大型' | '小型'>('全部');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   const filteredModels = mockShipModels.filter(model => {
     const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          model.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          model.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === '全部' || model.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+                          model.type.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesScale = selectedScale === '全部' || model.shipScale === selectedScale;
+    return matchesSearch && matchesScale;
   });
 
   return (
@@ -248,7 +245,7 @@ export function ShipModelManagement() {
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索 3D 船模名称、船型或分类..." 
+              placeholder="搜索 3D 船模名称或船型..." 
               className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 w-72 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-slate-400"
             />
             {searchQuery && (
@@ -262,17 +259,17 @@ export function ShipModelManagement() {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-            {categories.map((cat) => (
+            {(['全部', '大型', '小型'] as const).map((scale) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={scale}
+                onClick={() => setSelectedScale(scale)}
                 className={`px-3 py-1 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
-                  selectedCategory === cat
+                  selectedScale === scale
                     ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30 font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {cat}
+                {scale === '全部' ? '全部规模' : `${scale}船型`}
               </button>
             ))}
           </div>
@@ -331,41 +328,37 @@ export function ShipModelManagement() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 select-none"
                   />
                   
-                  {/* 3D 科技蓝图光效微光覆层 */}
+                  {/* 微光覆层 */}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20 pointer-events-none"></div>
 
-                  {/* 左上角 3D 孪生标识徽章 */}
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-slate-900/85 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-[11px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-                    <Box className="w-3 h-3 text-cyan-400 animate-pulse" />
-                    <span>3D CAD 数模</span>
+                  {/* 左上角 船型类型尺寸 (大型/小型) 标识 */}
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 backdrop-blur-md shadow-lg rounded-full text-[11px] font-bold px-2.5 py-0.5 border">
+                    {model.shipScale === '大型' ? (
+                      <span className="bg-blue-600/90 text-white border-blue-400/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Ship className="w-3 h-3 text-cyan-200" />
+                        <span>大型船型</span>
+                      </span>
+                    ) : (
+                      <span className="bg-emerald-600/90 text-white border-emerald-400/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Ship className="w-3 h-3 text-emerald-200" />
+                        <span>小型船型</span>
+                      </span>
+                    )}
                   </div>
 
-                  {/* 右上角 船型类型 */}
-                  <div className="absolute top-2.5 right-2.5 bg-blue-600/90 backdrop-blur text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                  {/* 右上角 详细船型描述 */}
+                  <div className="absolute top-2.5 right-2.5 bg-slate-900/80 backdrop-blur text-slate-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-slate-700/60 shadow-sm">
                     {model.type}
-                  </div>
-
-                  {/* 底部 3D 网格精度与舱段指标条 */}
-                  <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[10px] text-slate-300 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/60">
-                    <span className="flex items-center gap-1 text-cyan-300 font-mono">
-                      <Layers className="w-3 h-3" /> {model.lodLevel}
-                    </span>
-                    <span className="font-mono text-slate-300">{model.compartments} 个 3D 舱段</span>
                   </div>
                 </div>
 
                 {/* 卡片详情内容 */}
                 <div className="p-4 flex-1 flex flex-col">
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Ship className="w-4 h-4 text-blue-600 shrink-0" />
-                      <h3 className="font-bold text-slate-800 text-sm truncate" title={model.name}>
-                        {model.name}
-                      </h3>
-                    </div>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0 font-medium">
-                      {model.category}
-                    </span>
+                  <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                    <Ship className="w-4 h-4 text-blue-600 shrink-0" />
+                    <h3 className="font-bold text-slate-800 text-sm truncate" title={model.name}>
+                      {model.name}
+                    </h3>
                   </div>
 
                   <p className="text-xs text-slate-500 mb-3 line-clamp-2 leading-relaxed h-8">
@@ -394,7 +387,7 @@ export function ShipModelManagement() {
                       onClick={() => setSelectedModel(model)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" /> 查看 3D 拓扑与参数
+                      <Maximize2 className="w-3.5 h-3.5" /> 查看详情
                     </button>
                   </div>
                 </div>
@@ -411,18 +404,16 @@ export function ShipModelManagement() {
                     <th className="py-3 px-3.5 w-16 text-center border-r border-slate-200/50">代号</th>
                     <th className="py-3 px-3 w-28 text-center border-r border-slate-200/50">3D数模</th>
                     <th className="py-3 px-4 min-w-[220px] border-r border-slate-200/50">3D船模名称与说明</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/50">船型规模</th>
                     <th className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/50">船型类型</th>
-                    <th className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/50">应用分类</th>
-                    <th className="py-3 px-3.5 whitespace-nowrap border-r border-slate-200/50">LOD精度/舱段</th>
                     <th className="py-3 px-4 whitespace-nowrap border-r border-slate-200/50">主尺度 (LOA × 宽 × 深)</th>
-                    <th className="py-3 px-4 min-w-[200px] border-r border-slate-200/50">空间定位安全特性</th>
                     <th className="py-3 px-3 text-center min-w-[100px]">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredModels.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-400">
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
                         未匹配到符合条件的 3D 船模
                       </td>
                     </tr>
@@ -458,23 +449,18 @@ export function ShipModelManagement() {
                           </div>
                         </td>
                         <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-100">
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200/70 text-[11px] inline-block">
+                          <span className={`px-2.5 py-0.5 font-bold rounded-md text-[11px] inline-block ${
+                            model.shipScale === '大型'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200/70'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200/70'
+                          }`}>
+                            {model.shipScale}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-100">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-md text-[11px] inline-block">
                             {model.type}
                           </span>
-                        </td>
-                        <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-100">
-                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[11px] font-medium inline-block">
-                            {model.category}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3.5 whitespace-nowrap border-r border-slate-100">
-                          <div className="font-mono text-cyan-800 font-bold text-[11px] flex items-center gap-1">
-                            <Box className="w-3.5 h-3.5 text-cyan-600" />
-                            <span>{model.lodLevel}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                            {model.compartments} 个舱段 · {model.meshCount}
-                          </div>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap border-r border-slate-100">
                           <div className="font-mono text-xs text-slate-800 font-bold">
@@ -484,22 +470,13 @@ export function ShipModelManagement() {
                             吃水: {model.parameters.draft}m | {model.parameters.speed}
                           </div>
                         </td>
-                        <td className="py-3 px-4 border-r border-slate-100">
-                          <div className="flex flex-wrap gap-1.5">
-                            {model.features.map((feat, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-sky-50 text-sky-800 border border-sky-200/70 text-[10px] rounded-md font-medium">
-                                {feat}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
                         <td className="py-3 px-3 text-center">
                           <button 
-                            onClick={() => setSelectedModel(null || model)}
+                            onClick={() => setSelectedModel(model)}
                             className="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs active:scale-95"
                           >
                             <Maximize2 className="w-3.5 h-3.5" />
-                            <span>查看 3D 拓扑</span>
+                            <span>查看详情</span>
                           </button>
                         </td>
                       </tr>
@@ -522,45 +499,40 @@ export function ShipModelManagement() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden border border-slate-200 max-h-[90vh]"
           >
-            {/* 顶部 3D 渲染大图展示 */}
+            {/* 顶部渲染大图展示（按需求：图片处只要显示船名和类型） */}
             <div className="relative aspect-[21/9] bg-slate-950 overflow-hidden shrink-0">
               <img 
                 src={selectedModel.thumbnail} 
                 alt={selectedModel.name} 
                 className="w-full h-full object-cover select-none"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
               
               {/* 关闭按钮 */}
               <button 
                 onClick={() => setSelectedModel(null)}
-                className="absolute top-4 right-4 text-white hover:text-slate-200 bg-black/40 hover:bg-black/70 p-2 rounded-full backdrop-blur-md transition-colors"
+                className="absolute top-4 right-4 text-white hover:text-slate-200 bg-black/40 hover:bg-black/70 p-2 rounded-full backdrop-blur-md transition-colors z-10"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="absolute top-4 left-6 flex items-center gap-2">
-                <span className="flex items-center gap-1 bg-cyan-500/80 backdrop-blur text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                  <Box className="w-3.5 h-3.5" /> 3D 数字孪生模型
-                </span>
-                <span className="bg-white/20 backdrop-blur text-white text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  {selectedModel.lodLevel}
-                </span>
-              </div>
-
-              <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between">
-                <div>
-                  <div className="text-cyan-400 text-xs font-bold mb-1 uppercase tracking-wider">
-                    {selectedModel.category} · {selectedModel.type}
-                  </div>
-                  <h2 className="text-2xl font-extrabold text-white flex items-center gap-2 drop-shadow-md">
-                    <Ship className="w-6 h-6 text-cyan-400" /> {selectedModel.name}
-                  </h2>
+              {/* 仅显示船名与类型 */}
+              <div className="absolute bottom-4 left-6 right-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full backdrop-blur ${
+                    selectedModel.shipScale === '大型'
+                      ? 'bg-blue-600/90 text-white'
+                      : 'bg-emerald-600/90 text-white'
+                  }`}>
+                    {selectedModel.shipScale}
+                  </span>
+                  <span className="text-cyan-300 text-xs font-bold bg-slate-900/80 backdrop-blur px-2.5 py-0.5 rounded-full border border-slate-700/60">
+                    {selectedModel.type}
+                  </span>
                 </div>
-                <div className="text-right hidden sm:block">
-                  <div className="text-[11px] text-slate-300">3D 网格多边形</div>
-                  <div className="text-cyan-300 font-mono font-bold text-sm">{selectedModel.meshCount}</div>
-                </div>
+                <h2 className="text-2xl font-extrabold text-white flex items-center gap-2 drop-shadow-md">
+                  <Ship className="w-6 h-6 text-cyan-400 shrink-0" /> {selectedModel.name}
+                </h2>
               </div>
             </div>
             
@@ -575,7 +547,7 @@ export function ShipModelManagement() {
               {/* 核心主尺度参数 */}
               <div>
                 <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span> 船舶主尺度与关键物理参数 (3D 数模基准)
+                  <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span> 船舶主尺度与关键物理参数
                 </h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -610,37 +582,15 @@ export function ShipModelManagement() {
                 </div>
               </div>
 
-              {/* 3D 空间定位与安全孪生特性 */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-cyan-500 rounded-full"></span> 3D 空间结构与人员定位联动特性
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                  {selectedModel.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-3 bg-blue-50/60 border border-blue-100 rounded-2xl text-xs text-blue-900 font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
             </div>
 
-            {/* 弹窗底部操作 */}
+            {/* 弹窗底部操作：去掉了确认选择该3D模型按钮 */}
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-3xl">
               <button
                 onClick={() => setSelectedModel(null)}
-                className="px-5 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+                className="px-6 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs"
               >
                 关闭
-              </button>
-              <button
-                onClick={() => setSelectedModel(null)}
-                className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm shadow-blue-500/30 transition-colors flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" /> 确认选用该 3D 模型
               </button>
             </div>
           </div>

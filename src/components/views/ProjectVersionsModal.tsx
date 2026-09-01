@@ -7,9 +7,11 @@ import {
   GitBranch,
   Edit,
   Lock,
-  Users
+  Users,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import { CreateVersionModal, VersionPayload } from './CreateVersionModal';
+import { CreateVersionModal, VersionPayload, ProjectStatusType, PROJECT_STATUS_OPTIONS } from './CreateVersionModal';
 
 interface ProjectVersionsModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ interface ProjectVersionsModalProps {
   projectId: string | null;
   projectName?: string;
   shipType?: string;
+  onProjectStatusChange?: (projectId: string, newStatus: ProjectStatusType) => void;
 }
 
 // 计算上个版本结束时间的辅助函数：新版本开始时间减1秒
@@ -44,7 +47,8 @@ export function ProjectVersionsModal({
   onClose, 
   projectId, 
   projectName = '17.4万m³ 薄膜型大型LNG船 1号舰',
-  shipType = '清洁能源运输'
+  shipType = '清洁能源运输',
+  onProjectStatusChange
 }: ProjectVersionsModalProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVersion, setEditingVersion] = useState<VersionPayload | null>(null);
@@ -56,6 +60,7 @@ export function ProjectVersionsModal({
       versionNumber: 'V1.0',
       phaseName: '分段搭载与总组阶段',
       status: 'archived',
+      projectStatus: 'in_progress',
       startDate: '2026-03-01 08:00:00',
       endDate: '2026-06-16 07:59:59',
       sync: true,
@@ -75,6 +80,7 @@ export function ProjectVersionsModal({
       versionNumber: 'V2.0',
       phaseName: '大接缝合拢与密闭舱焊接',
       status: 'active',
+      projectStatus: 'in_progress',
       startDate: '2026-06-16 08:00:00',
       endDate: '生效中',
       sync: true,
@@ -92,12 +98,22 @@ export function ProjectVersionsModal({
 
   if (!isOpen) return null;
 
+  // 上个阶段版本的施工状态（用于新建阶段版本的继承逻辑，如无任何前序版本则返回 undefined）
+  const activeVersion = versions.find(v => v.status === 'active');
+  const latestVersion = activeVersion || (versions.length > 0 ? versions[versions.length - 1] : null);
+  const previousProjectStatus = latestVersion?.projectStatus || (versions.length > 0 ? 'in_progress' : undefined);
+
   // 处理保存（创建或编辑）
   const handleSaveVersion = (savedVersion: VersionPayload) => {
     if (editingVersion) {
       // 编辑模式
       setVersions(prev => prev.map(v => v.id === savedVersion.id ? savedVersion : v));
       setEditingVersion(null);
+
+      // 同步影响项目全局施工状态
+      if (savedVersion.status === 'active' && savedVersion.projectStatus && projectId && onProjectStatusChange) {
+        onProjectStatusChange(projectId, savedVersion.projectStatus);
+      }
     } else {
       // 创建新阶段版本：自动成为最新活跃版本，上个版本转为归档版本并设置结束时间（开始时间减1秒）
       const newStartDate = savedVersion.startDate;
@@ -118,6 +134,11 @@ export function ProjectVersionsModal({
         // 将新版本（status为active）加入列表
         return [...updatedPrevious, { ...savedVersion, status: 'active', endDate: '生效中' }];
       });
+
+      // 同步影响项目全局施工状态
+      if (savedVersion.projectStatus && projectId && onProjectStatusChange) {
+        onProjectStatusChange(projectId, savedVersion.projectStatus);
+      }
     }
   };
 
@@ -219,6 +240,16 @@ export function ProjectVersionsModal({
                         <h3 className="text-sm font-bold text-slate-800">
                           {version.phaseName}
                         </h3>
+                        {/* 阶段施工状态徽章 */}
+                        {version.projectStatus && (() => {
+                          const statusConfig = PROJECT_STATUS_OPTIONS.find(o => o.value === version.projectStatus);
+                          if (!statusConfig) return null;
+                          return (
+                            <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${statusConfig.badgeBg}`}>
+                              {statusConfig.label}
+                            </span>
+                          );
+                        })()}
                         {isActive ? (
                           <span className="text-[10px] border border-cyan-300 text-cyan-700 bg-cyan-50 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping"></span>
@@ -331,6 +362,7 @@ export function ProjectVersionsModal({
         projectName={projectName}
         shipType={shipType}
         editVersion={editingVersion}
+        previousProjectStatus={previousProjectStatus}
       />
     </div>
   );

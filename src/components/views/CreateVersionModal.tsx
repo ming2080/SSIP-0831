@@ -35,6 +35,15 @@ export const CONSTRUCTION_PHASE_PRESETS = [
   '船体合拢移位与坞内检修'
 ];
 
+export const PROJECT_STATUS_OPTIONS = [
+  { value: 'planning', label: '前期规划中', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { value: 'in_progress', label: '施工进行中', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { value: 'completed', label: '已竣工交船', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { value: 'suspended', label: '暂停施工', badgeBg: 'bg-rose-50 text-rose-700 border-rose-200' }
+] as const;
+
+export type ProjectStatusType = typeof PROJECT_STATUS_OPTIONS[number]['value'];
+
 export interface VersionPayload {
   id: string;
   title: string;
@@ -44,6 +53,7 @@ export interface VersionPayload {
   endDate?: string;
   sync: boolean;
   status: 'active' | 'archived';
+  projectStatus?: ProjectStatusType; // 该版本生效时的项目施工状态
   hasAssociatedData?: boolean; // 生效后是否已产生关联的数据（如人员定位轨迹、告警等）
   // 人员关联字段
   associatedPersonnelIds?: string[];
@@ -67,6 +77,7 @@ interface CreateVersionModalProps {
   projectName?: string;
   shipType?: string;
   editVersion?: VersionPayload | null;
+  previousProjectStatus?: ProjectStatusType; // 上个阶段版本的项目施工状态（用于新建继承）
 }
 
 export function CreateVersionModal({ 
@@ -75,7 +86,8 @@ export function CreateVersionModal({
   onSave, 
   projectName = '17.4万m³ 薄膜型大型LNG船 1号舰',
   shipType = '清洁能源运输',
-  editVersion = null
+  editVersion = null,
+  previousProjectStatus
 }: CreateVersionModalProps) {
   const isEdit = !!editVersion;
   const isHistoricalArchived = isEdit && editVersion?.status === 'archived';
@@ -83,8 +95,11 @@ export function CreateVersionModal({
   // 基础信息
   const [versionNumber, setVersionNumber] = useState('V3.0');
   const [phaseName, setPhaseName] = useState('水下舾装与管系试压');
-  const [startDate, setStartDate] = useState('2026-11-01T08:00');
+  const [startDate, setStartDate] = useState('2026-11-01T08:00:00');
   const [sync, setSync] = useState(true);
+  
+  // 项目施工状态（满足需求：每个版本可设置，新建时第一个版本默认选择第一个项目状态，后续继承上个阶段的状态）
+  const [projectStatus, setProjectStatus] = useState<ProjectStatusType>('planning');
 
   // 人员关联归属选择状态
   const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
@@ -107,15 +122,21 @@ export function CreateVersionModal({
       if (editVersion) {
         setVersionNumber(editVersion.versionNumber || 'V1.0');
         setPhaseName(editVersion.phaseName || CONSTRUCTION_PHASE_PRESETS[0]);
-        // 格式化 datetime-local 控件的初始值
+        // 格式化 datetime-local 控件的初始值 (保留到秒 HH:mm:ss)
         const rawStart = editVersion.startDate || '2026-11-01 08:00:00';
-        const formattedLocal = rawStart.includes('T') 
-          ? rawStart.slice(0, 16) 
-          : rawStart.replace(' ', 'T').slice(0, 16);
+        let formattedLocal = rawStart.includes('T') 
+          ? rawStart 
+          : rawStart.replace(' ', 'T');
+        if (formattedLocal.length === 16) {
+          formattedLocal += ':00';
+        }
         setStartDate(formattedLocal);
         setSync(editVersion.sync ?? true);
         setSelectedBerthId(editVersion.berthId || 'berth-3');
         setSelectedSlotNumber(editVersion.berthSlotNumber ?? 2);
+        
+        // 设置施工状态：已有版本的施工状态，或者上个版本的施工状态，否则默认 'planning'
+        setProjectStatus(editVersion.projectStatus || previousProjectStatus || 'planning');
 
         // 加载编辑阶段的人员关联归属
         if (editVersion.associatedPersonnelIds && editVersion.associatedPersonnelIds.length > 0) {
@@ -135,6 +156,15 @@ export function CreateVersionModal({
         setSelectedBerthId('berth-3');
         setSelectedSlotNumber(2);
 
+        // 新建版本状态控制逻辑（满足需求）：
+        // 如果有上个阶段版本的状态（previousProjectStatus），后续版本默认继承上个阶段的状态
+        // 如果没有上个阶段版本的状态，视为第一个版本，默认选择第一个项目状态（'planning' - 前期规划中）
+        if (previousProjectStatus) {
+          setProjectStatus(previousProjectStatus);
+        } else {
+          setProjectStatus('planning'); // 第一个项目状态
+        }
+
         // 新增阶段时，自动预选归属于当前造船工程项目的人员
         const projectWorkers = MOCK_PERSONNEL_LIST.filter(p => 
           p.projectName === projectName || p.projectId?.includes('LNG') || p.projectId?.includes('PRJ')
@@ -145,7 +175,7 @@ export function CreateVersionModal({
         setSelectedPersonnelIds(defaultIds);
       }
     }
-  }, [isOpen, editVersion, projectName]);
+  }, [isOpen, editVersion, previousProjectStatus, projectName]);
 
   if (!isOpen) return null;
 
@@ -251,6 +281,7 @@ export function CreateVersionModal({
       endDate: isEdit ? editVersion?.endDate : '生效中',
       sync,
       status: isEdit && editVersion ? editVersion.status : 'active', // 任何新建版本直接成为当前最新活跃版本！
+      projectStatus, // 保存当前阶段设定的项目施工状态
       hasAssociatedData,
       associatedPersonnelIds: selectedPersonnelIds,
       associatedPersonnelCount: selectedPersonnelIds.length,
@@ -338,7 +369,7 @@ export function CreateVersionModal({
               <h3 className="text-slate-800 font-bold text-sm">阶段版本基本属性与生效时间</h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 版本号 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
@@ -384,6 +415,31 @@ export function CreateVersionModal({
                 </select>
               </div>
 
+              {/* 项目施工状态切换与继承配置 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span><span className="text-red-500 mr-1">*</span>项目施工状态</span>
+                  {!isEdit && previousProjectStatus && (
+                    <span className="text-[10px] text-blue-600 font-medium bg-blue-50 border border-blue-200/80 px-1 rounded">继承上个阶段</span>
+                  )}
+                  {!isEdit && !previousProjectStatus && (
+                    <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 border border-emerald-200/80 px-1 rounded">首版本默认状态</span>
+                  )}
+                </label>
+                <select
+                  value={projectStatus}
+                  onChange={e => setProjectStatus(e.target.value as ProjectStatusType)}
+                  disabled={isHistoricalArchived}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                >
+                  {PROJECT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* 开始生效时间点（支持选择日期和时间） */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
@@ -395,6 +451,7 @@ export function CreateVersionModal({
                 </label>
                 <input 
                   type="datetime-local" 
+                  step="1"
                   value={startDate}
                   disabled={hasAssociatedData || isHistoricalArchived}
                   onChange={e => {

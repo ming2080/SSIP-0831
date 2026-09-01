@@ -601,25 +601,6 @@ export function CreateProjectModal({ isOpen, onClose, onSubmit, initialData }: C
                   ))}
                 </select>
               </div>
-
-              {/* 项目施工状态（仅中文显示，无英文） */}
-              {isEditMode && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    项目施工状态
-                  </label>
-                  <select 
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-                  >
-                    <option value="planning">前期规划中</option>
-                    <option value="in_progress">施工进行中</option>
-                    <option value="completed">已竣工交船</option>
-                    <option value="suspended">暂停施工</option>
-                  </select>
-                </div>
-              )}
             </div>
 
             {/* 项目周期起止时间 */}
