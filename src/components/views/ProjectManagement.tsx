@@ -903,7 +903,31 @@ export function ProjectManagement() {
         shipType={projects.find(p => p.id === versionsProjectId)?.shipType}
         onClose={() => setVersionsProjectId(null)} 
         onProjectStatusChange={(projId, newStatus) => {
-          setProjects(prev => prev.map(p => p.id === projId ? { ...p, status: newStatus } : p));
+          setProjects(prev => prev.map(p => {
+            if (p.id === projId) {
+              if (newStatus === 'completed') {
+                return {
+                  ...p,
+                  status: 'completed',
+                  progress: 100,
+                  devices: '已解绑 (0)',
+                  fence: '已解绑解除',
+                  personnel: 0,
+                  dockingArea: '已竣工交付离厂',
+                  phase: '竣工交付'
+                };
+              }
+              return { ...p, status: newStatus };
+            }
+            return p;
+          }));
+          if (newStatus === 'completed') {
+            const proj = projects.find(p => p.id === projId);
+            setSuccessBanner(`项目【${proj?.name || projId}】已成功设定为【已竣工交船】！系统已自动解绑关联设备与电子围栏，项目处于归档模式。`);
+            setTimeout(() => {
+              setSuccessBanner(null);
+            }, 6000);
+          }
         }}
       />
     </div>
