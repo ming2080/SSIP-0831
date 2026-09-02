@@ -15,7 +15,11 @@ import {
   Tv,
   AlertTriangle,
   Ship,
-  Info
+  Info,
+  MapPin,
+  Crosshair,
+  Building2,
+  Compass
 } from 'lucide-react';
 import { MOCK_PROJECTS } from '@/src/data/mockProjects';
 
@@ -90,6 +94,12 @@ export function getLayerOption(levelId?: string): ModelLayerOption | undefined {
   return MODEL_LAYER_OPTIONS.find(l => l.id === levelId);
 }
 
+// 定位衰减系数 (0~31) 对应覆盖范围半径距离 (50米递减到1米)
+export function getCoverageRadiusByAttenuation(coeffStrOrNum: string | number): number {
+  const coeff = Math.max(0, Math.min(31, Number(coeffStrOrNum) || 0));
+  return Math.round(50 - (coeff * 49 / 31));
+}
+
 // 1. 主基站类型
 export interface BaseStationDevice {
   id: string;
@@ -102,13 +112,18 @@ export interface BaseStationDevice {
   modelLevel?: string;    // 模型分层 (deck | middle | bottom | engine | bridge)
   modelLevelName?: string;// 模型分层名称
   status: '在线' | '离线'; // 基站状态
-  recycleStatus: string;  // 基站回收状态（设备安装、临时撤场等）
+  recycleStatus: string;  // 基站回收状态（设备安装、已回收、维护中、待安装、临时撤场、拟拆除等）
   location: string;       // 安装位置
   floor?: string;         // 安装楼层
-  signalLossTime?: string; // 信号丢失时间
-  attenuationCoeff?: string; // 衰减系数
-  coverageRange?: string; // 覆盖范围
+  signalLossTime?: number | string; // 信号丢失时间 (分钟)
+  attenuationCoeff?: number | string; // 衰减系数
+  coverageRange?: number | string; // 覆盖范围 (m)
+  positionX?: number;     // 安装位置X轴
+  positionY?: number;     // 安装位置Y轴
+  positionZ?: number;     // 安装位置Z轴
+  installationSite?: string; // 基站安装场所 (室外/室内/舱内/船台/码头)
   auxPositioning: '是' | '否'; // 辅助定位
+  electricFence?: string; // 电子围栏
   lastUpdated?: string;   // 最后更新时间
   ipAddress?: string;     // IP地址
   macAddress?: string;    // MAC地址
@@ -131,6 +146,11 @@ export interface GasDetectorDevice {
   floor?: string;          // 安装楼层
   gasType?: string;        // 检测气体类型
   alarmThreshold?: string; // 告警阀值
+  positionX?: number;
+  positionY?: number;
+  positionZ?: number;
+  installationSite?: string;
+  electricFence?: string;
 }
 
 // 3. 声光报警器类型
@@ -148,6 +168,11 @@ export interface AlarmDevice {
   location: string;        // 安装位置
   floor?: string;          // 安装楼层
   decibel?: string;        // 报警声级dB
+  positionX?: number;
+  positionY?: number;
+  positionZ?: number;
+  installationSite?: string;
+  electricFence?: string;
 }
 
 // 4. 摄像头类型
@@ -166,6 +191,11 @@ export interface CameraDevice {
   createdAt: string;       // 创建时间
   isStreaming: boolean;    // 推流状态 (true: 推流中, false: 停止推流)
   rtspUrl?: string;        // RTSP视频流
+  positionX?: number;
+  positionY?: number;
+  positionZ?: number;
+  installationSite?: string;
+  electricFence?: string;
 }
 
 // 初始数据：主基站
@@ -173,21 +203,26 @@ const initialBaseStations: BaseStationDevice[] = [
   {
     id: 'BS-01',
     seq: 1,
-    code: '115D6DBC4AD7592E54',
-    name: '11（使用中）',
-    associationType: 'global',
-    projectId: '',
-    project: '全厂通用设备',
-    modelLevel: 'all',
-    modelLevelName: '全厂公共区域',
+    code: '测试',
+    name: '123',
+    associationType: 'project',
+    projectId: 'PRJ-2026-SE01',
+    project: '东南造船厂',
+    modelLevel: 'deck',
+    modelLevelName: '甲板层 (主甲板/露天作业区)',
     status: '在线',
     recycleStatus: '设备安装',
-    location: '制造部边跨路口',
+    location: '测试',
     floor: '',
-    signalLossTime: '6',
-    attenuationCoeff: '19',
-    coverageRange: '23m',
-    auxPositioning: '是',
+    signalLossTime: 5,
+    attenuationCoeff: '0',
+    coverageRange: '50',
+    positionX: 407.49,
+    positionY: 0.02,
+    positionZ: -296.85,
+    installationSite: '室外',
+    auxPositioning: '否',
+    electricFence: '517-9',
     lastUpdated: '2026-08-29 21:19:43',
     ipAddress: '192.168.10.111',
     macAddress: '11:5D:6D:BC:4A:D7',
@@ -197,7 +232,7 @@ const initialBaseStations: BaseStationDevice[] = [
     id: 'BS-02',
     seq: 2,
     code: '115D6DBC4AD7593354',
-    name: '7',
+    name: '7号船台基站',
     associationType: 'project',
     projectId: 'PRJ-2026-LNG01',
     project: '17.4万m³ 薄膜型大型LNG船 1号舰',
@@ -207,10 +242,15 @@ const initialBaseStations: BaseStationDevice[] = [
     recycleStatus: '设备安装',
     location: '2万吨船台尾段',
     floor: '5',
-    signalLossTime: '0',
+    signalLossTime: 0,
     attenuationCoeff: '0',
-    coverageRange: '50m',
+    coverageRange: '50',
+    positionX: 312.50,
+    positionY: 12.80,
+    positionZ: -180.20,
+    installationSite: '舱内',
     auxPositioning: '是',
+    electricFence: '517-9',
     lastUpdated: '2026-08-29 21:17:38',
     ipAddress: '192.168.10.107',
     macAddress: '11:5D:6D:BC:33:54',
@@ -421,6 +461,8 @@ export function DeviceManagement() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail' | 'preview' | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
+  const [mapViewDevice, setMapViewDevice] = useState<any | null>(null);
 
   // 表单临时编辑状态
   const [formFields, setFormFields] = useState<Record<string, any>>({});
@@ -525,27 +567,32 @@ export function DeviceManagement() {
   // 打开新增模态框
   const handleOpenCreate = () => {
     const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const defaultAssociation = 'global';
-    const defaultProj = '全厂通用设备';
+    const defaultAssociation = 'project';
+    const defaultProjId = MOCK_PROJECTS[0].id;
+    const defaultProjName = MOCK_PROJECTS[0].name;
 
     if (activeTab === 'main_station') {
-      const randomHex = Math.random().toString(16).substring(2, 8).toUpperCase();
       setFormFields({
-        code: `115D6DBC4AD7${randomHex}`,
-        name: `${baseStations.length + 1}`,
+        code: '测试',
+        name: '123',
         associationType: defaultAssociation,
-        projectId: '',
-        project: defaultProj,
+        projectId: defaultProjId,
+        project: defaultProjName,
         modelLevel: 'deck',
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         status: '在线',
+        location: '测试',
+        floor: '',
         recycleStatus: '设备安装',
-        location: '制造部边跨路口',
-        floor: '5',
-        signalLossTime: '0',
-        attenuationCoeff: '19',
-        coverageRange: '23m',
-        auxPositioning: '是'
+        signalLossTime: 5,
+        attenuationCoeff: '0',
+        coverageRange: '50',
+        positionX: 407.49,
+        positionY: 0.02,
+        positionZ: -296.85,
+        installationSite: '室外',
+        auxPositioning: '否',
+        electricFence: '517-9'
       });
     } else if (activeTab === 'gas_detector') {
       const randomSn = '866833080' + Math.floor(100050 + Math.random() * 899900);
@@ -554,14 +601,18 @@ export function DeviceManagement() {
         sn: randomSn,
         name: randomSn,
         associationType: defaultAssociation,
-        projectId: '',
-        project: defaultProj,
+        projectId: defaultProjId,
+        project: defaultProjName,
         modelLevel: 'deck',
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         location: '517-9号船机舱',
         floor: '',
         gasType: '多气体四合一 (O2/CO/H2S/EX)',
-        alarmThreshold: 'O2 < 19.5%'
+        alarmThreshold: 'O2 < 19.5%',
+        positionX: 312.50,
+        positionY: 12.80,
+        positionZ: -180.20,
+        installationSite: '舱内'
       });
     } else if (activeTab === 'alarm') {
       const randomSn = '867655086' + Math.floor(100050 + Math.random() * 899900);
@@ -570,13 +621,17 @@ export function DeviceManagement() {
         sn: randomSn,
         name: randomSn,
         associationType: defaultAssociation,
-        projectId: '',
-        project: defaultProj,
+        projectId: defaultProjId,
+        project: defaultProjName,
         modelLevel: 'deck',
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         location: '145-3机舱',
         floor: '',
-        decibel: '110dB'
+        decibel: '110dB',
+        positionX: 185.00,
+        positionY: 6.50,
+        positionZ: -45.00,
+        installationSite: '舱内'
       });
     } else if (activeTab === 'camera') {
       setFormFields({
@@ -585,13 +640,17 @@ export function DeviceManagement() {
         modelCategory: '--',
         apiUrl: `http://192.168.205.110:${7570 + cameras.length}`,
         associationType: defaultAssociation,
-        projectId: '',
-        project: defaultProj,
+        projectId: defaultProjId,
+        project: defaultProjName,
         modelLevel: 'deck',
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         createdAt: timeStr,
         isStreaming: true,
-        rtspUrl: `rtsp://192.168.205.110:554/live/cam_${cameras.length + 1}`
+        rtspUrl: `rtsp://192.168.205.110:554/live/cam_${cameras.length + 1}`,
+        positionX: 407.49,
+        positionY: 0.02,
+        positionZ: -296.85,
+        installationSite: '室外'
       });
     }
     setModalMode('create');
@@ -610,7 +669,22 @@ export function DeviceManagement() {
       projectId: isGlobal ? '' : targetPrjId,
       project: targetPrjName,
       modelLevel: item.modelLevel || 'deck',
-      modelLevelName: item.modelLevelName || getLayerOption(item.modelLevel)?.fullName || MODEL_LAYER_OPTIONS[0].fullName
+      modelLevelName: item.modelLevelName || getLayerOption(item.modelLevel)?.fullName || MODEL_LAYER_OPTIONS[0].fullName,
+      code: item.code || '',
+      name: item.name || '',
+      status: item.status || '在线',
+      recycleStatus: item.recycleStatus || '设备安装',
+      location: item.location || '',
+      floor: item.floor || '',
+      signalLossTime: item.signalLossTime ?? 5,
+      attenuationCoeff: item.attenuationCoeff ?? '0',
+      coverageRange: item.coverageRange ?? '50',
+      positionX: item.positionX ?? 407.49,
+      positionY: item.positionY ?? 0.02,
+      positionZ: item.positionZ ?? -296.85,
+      installationSite: item.installationSite || '室外',
+      auxPositioning: item.auxPositioning || '否',
+      electricFence: item.electricFence || '517-9'
     });
     setModalMode('edit');
   };
@@ -660,12 +734,17 @@ export function DeviceManagement() {
           modelLevelName: finalModelLevelName,
           status: formFields.status || '在线',
           recycleStatus: formFields.recycleStatus || '设备安装',
-          location: formFields.location || '厂区路口',
+          location: formFields.location || '测试',
           floor: formFields.floor || '',
-          signalLossTime: formFields.signalLossTime || '0',
-          attenuationCoeff: formFields.attenuationCoeff || '19',
-          coverageRange: formFields.coverageRange || '23m',
-          auxPositioning: formFields.auxPositioning || '是',
+          signalLossTime: formFields.signalLossTime ?? 5,
+          attenuationCoeff: formFields.attenuationCoeff ?? '0',
+          coverageRange: formFields.coverageRange ?? '50',
+          positionX: Number(formFields.positionX ?? 407.49),
+          positionY: Number(formFields.positionY ?? 0.02),
+          positionZ: Number(formFields.positionZ ?? -296.85),
+          installationSite: formFields.installationSite || '室外',
+          auxPositioning: formFields.auxPositioning || '否',
+          electricFence: formFields.electricFence || '517-9',
           lastUpdated: new Date().toISOString().replace('T', ' ').substring(0, 19),
           ipAddress: `192.168.10.${100 + baseStations.length}`,
           macAddress: `11:5D:6D:BC:${Math.floor(10+Math.random()*89)}:${Math.floor(10+Math.random()*89)}`,
@@ -680,7 +759,12 @@ export function DeviceManagement() {
           projectId: finalProjectId,
           project: finalProjectName,
           modelLevel: finalModelLevel,
-          modelLevelName: finalModelLevelName
+          modelLevelName: finalModelLevelName,
+          positionX: Number(formFields.positionX ?? 407.49),
+          positionY: Number(formFields.positionY ?? 0.02),
+          positionZ: Number(formFields.positionZ ?? -296.85),
+          installationSite: formFields.installationSite || '室外',
+          electricFence: formFields.electricFence || '517-9'
         } : d));
       }
     } else if (activeTab === 'gas_detector') {
@@ -794,51 +878,71 @@ export function DeviceManagement() {
     setSelectedDevice(null);
   };
 
-  // 表格单元格渲染器：项目与 3D BIM 模型分层信息
-  const renderProjectAndLayerCell = (device: {
+  // 表格单元格渲染器 1：厂区通用 / 关联项目
+  const renderProjectCell = (device: {
     associationType?: 'global' | 'project';
     projectId?: string;
+    project: string;
+  }) => {
+    const isGlobal = device.associationType === 'global' || device.project === '全厂通用设备';
+    if (isGlobal) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+          厂区通用
+        </span>
+      );
+    }
+
+    const fullName = `${device.projectId ? '[' + device.projectId + '] ' : ''}${device.project}`;
+
+    return (
+      <div 
+        className="flex items-center justify-center gap-1.5 max-w-[180px] mx-auto overflow-hidden cursor-default" 
+        title={fullName}
+      >
+        <Ship className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+        {device.projectId && (
+          <span className="font-mono text-sky-700 font-bold text-[10px] bg-sky-100/80 px-1 py-0.2 rounded shrink-0">
+            {device.projectId}
+          </span>
+        )}
+        <span className="truncate text-slate-800 font-medium text-xs">{device.project}</span>
+      </div>
+    );
+  };
+
+  // 表格单元格渲染器 2：船型分层
+  const renderLayerCell = (device: {
+    associationType?: 'global' | 'project';
     project: string;
     modelLevel?: string;
     modelLevelName?: string;
   }) => {
     const isGlobal = device.associationType === 'global' || device.project === '全厂通用设备';
     if (isGlobal) {
+      return <span className="text-slate-400 font-mono text-xs">-</span>;
+    }
+
+    const layer = getLayerOption(device.modelLevel);
+    if (layer) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-          🏢 全厂通用设备
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${layer.badgeBg} ${layer.badgeText} ${layer.badgeBorder}`}>
+          <Layers className="w-3 h-3 shrink-0" />
+          <span>{layer.name}</span>
         </span>
       );
     }
 
-    const layer = getLayerOption(device.modelLevel);
+    if (device.modelLevelName) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <Layers className="w-3 h-3" />
+          <span>{device.modelLevelName}</span>
+        </span>
+      );
+    }
 
-    return (
-      <div className="flex flex-col items-center justify-center gap-1 py-0.5">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-sky-50/90 text-sky-800 border border-sky-200/90 max-w-[220px]" title={`${device.projectId ? '[' + device.projectId + '] ' : ''}${device.project}`}>
-          <Ship className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-          {device.projectId && (
-            <span className="font-mono text-sky-700 font-bold text-[10px] bg-sky-100/80 px-1 py-0.2 rounded">
-              {device.projectId}
-            </span>
-          )}
-          <span className="truncate">{device.project}</span>
-        </div>
-        
-        {layer ? (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${layer.badgeBg} ${layer.badgeText} ${layer.badgeBorder}`}>
-            <Layers className="w-3 h-3 shrink-0" />
-            <span>{layer.name}</span>
-          </span>
-        ) : device.modelLevelName ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-            <Layers className="w-3 h-3" />
-            <span>{device.modelLevelName}</span>
-          </span>
-        ) : null}
-      </div>
-    );
+    return <span className="text-slate-400 font-mono text-xs">-</span>;
   };
 
   return (
@@ -1057,11 +1161,11 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-2 text-center whitespace-nowrap w-12 border-r border-slate-100">序号</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">基站编码</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">基站名称</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100 min-w-[180px]">关联项目 / 船型分层</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">基站状态</th>
-                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">回收状态</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">状态</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">安装位置</th>
-                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">安装楼层</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">覆盖范围</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">辅助定位</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">最后更新</th>
@@ -1082,7 +1186,10 @@ export function DeviceManagement() {
                       <td className="py-2.5 px-3 text-center font-mono text-slate-800 text-[11px] whitespace-nowrap border-r border-slate-50">{device.code}</td>
                       <td className="py-2.5 px-3 text-center text-slate-800 font-medium whitespace-nowrap border-r border-slate-50">{device.name}</td>
                       <td className="py-2.5 px-3 text-center border-r border-slate-50">
-                        {renderProjectAndLayerCell(device)}
+                        {renderProjectCell(device)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-50">
                         {device.status === '在线' ? (
@@ -1093,13 +1200,15 @@ export function DeviceManagement() {
                       </td>
                       <td className="py-2.5 px-3 text-center text-slate-700 whitespace-nowrap border-r border-slate-50">{device.recycleStatus}</td>
                       <td className="py-2.5 px-3 text-center text-slate-800 whitespace-nowrap border-r border-slate-50">{device.location}</td>
-                      <td className="py-2.5 px-3 text-center font-mono text-slate-600 text-[11px] border-r border-slate-50">{device.floor || '-'}</td>
                       <td className="py-2.5 px-3 text-center font-mono text-slate-600 text-[11px] border-r border-slate-50">{device.coverageRange || '-'}</td>
                       <td className="py-2.5 px-3 text-center text-slate-700 whitespace-nowrap border-r border-slate-50">{device.auxPositioning}</td>
                       <td className="py-2.5 px-3 text-center font-mono text-slate-500 text-[11px] whitespace-nowrap border-r border-slate-50">{device.lastUpdated || '-'}</td>
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => handleOpenDetail(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">查看</button>
+                          <button onClick={() => setMapViewDevice(device)} className="text-emerald-600 hover:text-emerald-800 font-bold hover:underline text-[11px] cursor-pointer inline-flex items-center gap-0.5">
+                            <MapPin className="w-3 h-3 text-emerald-600" />
+                            <span>查看</span>
+                          </button>
                           <button onClick={() => handleOpenEdit(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">编辑</button>
                           <button onClick={() => setDeleteTargetId(device.id)} className="text-rose-500 hover:text-rose-700 font-medium hover:underline text-[11px] cursor-pointer">删除</button>
                         </div>
@@ -1119,7 +1228,8 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-2 text-center whitespace-nowrap w-12 border-r border-slate-100">序号</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">创建时间</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">设备SN</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100 min-w-[180px]">关联项目 / 船型分层</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">安装位置</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">气体检测类型</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">告警阀值</th>
@@ -1129,7 +1239,7 @@ export function DeviceManagement() {
               <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                 {filteredGasDetectors.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
                       暂无气体探测器数据记录
                     </td>
                   </tr>
@@ -1139,8 +1249,11 @@ export function DeviceManagement() {
                       <td className="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-slate-50">{idx + 1}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-slate-600 text-[11px] whitespace-nowrap border-r border-slate-50">{device.createdAt}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-slate-800 text-[11px] whitespace-nowrap border-r border-slate-50">{device.sn}</td>
-                      <td className="py-2.5 px-4 text-center border-r border-slate-50">
-                        {renderProjectAndLayerCell(device)}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderProjectCell(device)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-800 whitespace-nowrap border-r border-slate-50">{device.location}</td>
                       <td className="py-2.5 px-4 text-center text-amber-700 font-semibold whitespace-nowrap border-r border-slate-50">{device.gasType}</td>
@@ -1167,7 +1280,8 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-2 text-center whitespace-nowrap w-12 border-r border-slate-100">序号</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">创建时间</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">设备SN</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100 min-w-[180px]">关联项目 / 船型分层</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">安装位置</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">报警声级 (dB)</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap min-w-[140px]">操作</th>
@@ -1176,7 +1290,7 @@ export function DeviceManagement() {
               <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                 {filteredAlarms.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-slate-400">
                       暂无声光报警器数据记录
                     </td>
                   </tr>
@@ -1186,8 +1300,11 @@ export function DeviceManagement() {
                       <td className="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-slate-50">{idx + 1}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-slate-600 text-[11px] whitespace-nowrap border-r border-slate-50">{device.createdAt}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-slate-800 text-[11px] whitespace-nowrap border-r border-slate-50">{device.sn}</td>
-                      <td className="py-2.5 px-4 text-center border-r border-slate-50">
-                        {renderProjectAndLayerCell(device)}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderProjectCell(device)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-800 whitespace-nowrap border-r border-slate-50">{device.location}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-rose-600 font-bold text-[11px] border-r border-slate-50">{device.decibel || '110dB'}</td>
@@ -1214,7 +1331,8 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">设备编码</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">设备名称</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100">AI模型类别</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100 min-w-[180px]">关联项目 / 船型分层</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">API接口</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">创建时间</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap min-w-[200px]">操作</th>
@@ -1223,7 +1341,7 @@ export function DeviceManagement() {
               <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                 {filteredCameras.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
                       暂无摄像头设备记录
                     </td>
                   </tr>
@@ -1234,8 +1352,11 @@ export function DeviceManagement() {
                       <td className="py-2.5 px-3 text-center font-mono text-slate-800 text-[11px] whitespace-nowrap border-r border-slate-50">{device.code}</td>
                       <td className="py-2.5 px-4 text-center text-slate-800 font-medium whitespace-nowrap border-r border-slate-50">{device.name}</td>
                       <td className="py-2.5 px-3 text-center text-slate-600 font-mono text-[11px] whitespace-nowrap border-r border-slate-50">{device.modelCategory}</td>
-                      <td className="py-2.5 px-4 text-center border-r border-slate-50">
-                        {renderProjectAndLayerCell(device)}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderProjectCell(device)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-4 text-center font-mono text-sky-700 text-[11px] whitespace-nowrap border-r border-slate-50">{device.apiUrl}</td>
                       <td className="py-2.5 px-4 text-center font-mono text-slate-600 text-[11px] whitespace-nowrap border-r border-slate-50">{device.createdAt}</td>
@@ -1249,7 +1370,10 @@ export function DeviceManagement() {
                             {device.isStreaming ? '停止推流' : '开启推流'}
                           </button>
                           <button onClick={() => handleOpenEdit(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">编辑</button>
-                          <button onClick={() => handleOpenDetail(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">详情</button>
+                          <button onClick={() => setMapViewDevice(device)} className="text-emerald-600 hover:text-emerald-800 font-bold hover:underline text-[11px] cursor-pointer inline-flex items-center gap-0.5">
+                            <MapPin className="w-3 h-3 text-emerald-600" />
+                            <span>查看</span>
+                          </button>
                           <button onClick={() => setDeleteTargetId(device.id)} className="text-rose-500 hover:text-rose-700 font-medium hover:underline text-[11px] cursor-pointer">删除</button>
                         </div>
                       </td>
@@ -1440,73 +1564,232 @@ export function DeviceManagement() {
                 </div>
               )}
 
-              {/* [模态表单 1] 主基站特定属性 */}
+              {/* [模态表单 1] 主基站特定全量属性（包含15项要素与地图坐标可视化拾取） */}
               {activeTab === 'main_station' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">基站编码 <span className="text-rose-500">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      value={formFields.code || ''}
-                      onChange={(e) => setFormFields({ ...formFields, code: e.target.value })}
-                      placeholder="如: 115D6DBC4AD7592E54"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-mono text-xs"
-                    />
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {/* 1. 基站编码 */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        基站编码 <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formFields.code || ''}
+                        onChange={(e) => setFormFields({ ...formFields, code: e.target.value })}
+                        placeholder="请输入基站编码，如: 测试"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+
+                    {/* 2. 基站名称 */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        基站名称 <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formFields.name || ''}
+                        onChange={(e) => setFormFields({ ...formFields, name: e.target.value })}
+                        placeholder="请输入基站名称，如: 123"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* 3. 基站安装位置 */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        基站安装位置 <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formFields.location || ''}
+                        onChange={(e) => {
+                          const newLoc = e.target.value;
+                          setFormFields({
+                            ...formFields,
+                            location: newLoc,
+                            electricFence: newLoc ? `${newLoc}-围栏` : '517-9'
+                          });
+                        }}
+                        placeholder="请输入安装具体位置，如: 测试"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* 5. 设备回收状态 */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">设备回收状态</label>
+                      <select
+                        value={formFields.recycleStatus || '设备安装'}
+                        onChange={(e) => setFormFields({ ...formFields, recycleStatus: e.target.value })}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                      >
+                        <option value="设备安装">设备安装</option>
+                        <option value="已回收">已回收</option>
+                        <option value="维护中">维护中</option>
+                        <option value="待安装">待安装</option>
+                        <option value="临时撤场">临时撤场</option>
+                        <option value="拟拆除">拟拆除</option>
+                      </select>
+                    </div>
+
+                    {/* 6. 信号丢失时间（步进器）与 辅助定位 (同第一行) */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">信号丢失时间 (分钟)</label>
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setFormFields({ ...formFields, signalLossTime: Math.max(0, (Number(formFields.signalLossTime) || 0) - 1) })}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-l text-slate-700 font-bold"
+                        >
+                          —
+                        </button>
+                        <input
+                          type="number"
+                          value={formFields.signalLossTime ?? 5}
+                          onChange={(e) => setFormFields({ ...formFields, signalLossTime: Number(e.target.value) })}
+                          className="w-full text-center py-1 border-t border-b border-slate-300 text-xs font-mono font-bold focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormFields({ ...formFields, signalLossTime: (Number(formFields.signalLossTime) || 0) + 1 })}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-r text-slate-700 font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 辅助定位 (与信号丢失时间同行) */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">辅助定位</label>
+                      <select
+                        value={formFields.auxPositioning || '否'}
+                        onChange={(e) => setFormFields({ ...formFields, auxPositioning: e.target.value })}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer font-medium text-slate-800"
+                      >
+                        <option value="否">否</option>
+                        <option value="是">是</option>
+                      </select>
+                    </div>
+
+                    {/* 7. 定位衰减系数 (0~31) 与 8. 覆盖范围 (同行) */}
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">定位衰减系数</label>
+                      <select
+                        value={String(formFields.attenuationCoeff ?? '0')}
+                        onChange={(e) => {
+                          const newCoeff = e.target.value;
+                          const newCoverage = String(getCoverageRadiusByAttenuation(newCoeff));
+                          setFormFields({
+                            ...formFields,
+                            attenuationCoeff: newCoeff,
+                            coverageRange: newCoverage
+                          });
+                        }}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer font-mono"
+                      >
+                        {Array.from({ length: 32 }, (_, i) => (
+                          <option key={i} value={String(i)}>
+                            {i} (对应 {getCoverageRadiusByAttenuation(i)} 米)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                        <span>覆盖范围</span>
+                        <span className="text-[11px] font-normal text-slate-400">（衰减系数联动）</span>
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          readOnly
+                          disabled
+                          value={`${getCoverageRadiusByAttenuation(formFields.attenuationCoeff ?? 0)}`}
+                          placeholder="50"
+                          className="w-full pl-2.5 pr-7 py-1.5 border border-slate-200 bg-slate-100 rounded text-xs text-slate-500 font-mono font-bold cursor-not-allowed select-none"
+                        />
+                        <span className="absolute right-2.5 text-slate-400 text-xs font-bold pointer-events-none">m</span>
+                      </div>
+                    </div>
+
+                    {/* 11. 电子围栏关联 (根据安装位置固定，不可编辑) */}
+                    <div className="col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                        <span>电子围栏关联</span>
+                        <span className="text-[11px] font-normal text-slate-400">（根据设备安装位置固定，不可编辑）</span>
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={formFields.electricFence || (formFields.location ? `${formFields.location}-围栏` : '517-9')}
+                        placeholder="根据安装位置固定"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded text-xs text-slate-500 font-mono cursor-not-allowed select-none"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">基站名称/编号 <span className="text-rose-500">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      value={formFields.name || ''}
-                      onChange={(e) => setFormFields({ ...formFields, name: e.target.value })}
-                      placeholder="例如: 11（使用中）"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">基站状态</label>
-                    <select
-                      value={formFields.status || '在线'}
-                      onChange={(e) => setFormFields({ ...formFields, status: e.target.value })}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    >
-                      <option value="在线">在线</option>
-                      <option value="离线">离线</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">回收状态</label>
-                    <select
-                      value={formFields.recycleStatus || '设备安装'}
-                      onChange={(e) => setFormFields({ ...formFields, recycleStatus: e.target.value })}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    >
-                      <option value="设备安装">设备安装</option>
-                      <option value="临时撤场">临时撤场</option>
-                      <option value="拟拆除">拟拆除</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">安装位置</label>
-                    <input
-                      type="text"
-                      value={formFields.location || ''}
-                      onChange={(e) => setFormFields({ ...formFields, location: e.target.value })}
-                      placeholder="如: 制造部边跨路口"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">覆盖范围</label>
-                    <input
-                      type="text"
-                      value={formFields.coverageRange || ''}
-                      onChange={(e) => setFormFields({ ...formFields, coverageRange: e.target.value })}
-                      placeholder="如: 23m 或 50m"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
+
+                  {/* 12. 可视化定位设备的安装位置 (X, Y, Z 轴) 及地图拾取按钮 */}
+                  <div className="p-3 bg-gradient-to-br from-slate-900 to-cyan-950 rounded-xl text-white border border-cyan-800/80 shadow-md space-y-2">
+                    <div className="flex items-center justify-start">
+                      {/* 可视化地图拾取触发按钮 (置于左侧) */}
+                      <button
+                        type="button"
+                        onClick={() => setIsMapPickerOpen(true)}
+                        className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[11px] font-bold transition-all shadow-md flex items-center gap-1 cursor-pointer"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-cyan-200" />
+                        <span>🗺️ 点击地图添加/更新坐标</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                      <div>
+                        <label className="block text-slate-400 text-[10px] mb-0.5">安装位置X轴</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formFields.positionX ?? 407.49}
+                          onChange={(e) => setFormFields({ ...formFields, positionX: Number(e.target.value) })}
+                          placeholder="407.49"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-400 text-[10px] mb-0.5">安装位置Y轴</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formFields.positionY ?? 0.02}
+                          onChange={(e) => setFormFields({ ...formFields, positionY: Number(e.target.value) })}
+                          placeholder="0.02"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-400 text-[10px] mb-0.5">安装位置Z轴</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formFields.positionZ ?? -296.85}
+                          onChange={(e) => setFormFields({ ...formFields, positionZ: Number(e.target.value) })}
+                          placeholder="-296.85"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1901,6 +2184,458 @@ export function DeviceManagement() {
               >
                 确认删除
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. 可视化定位设备安装位置地图拾取器 Modal (调整为全屏 100vw * 100vh) */}
+      {isMapPickerOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col w-screen h-screen overflow-hidden animate-in fade-in duration-200">
+          <div className="bg-slate-950 w-full h-full flex flex-col overflow-hidden">
+            {/* 顶栏 Header */}
+            <div className="px-6 py-3.5 bg-slate-900 border-b border-cyan-900/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/10 border border-cyan-500/40 rounded-xl text-cyan-400">
+                  <Crosshair className="w-5 h-5 animate-spin" style={{ animationDuration: '10s' }} />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-base flex items-center gap-2.5">
+                    可视化设备坐标拾取器
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold">
+                      {formFields.associationType === 'global' ? '全厂场景 / 船厂地图' : '造船项目 / 船型模型'}
+                    </span>
+                  </h3>
+                  <p className="text-slate-400 text-xs mt-0.5">在 {formFields.associationType === 'global' ? '东南造船厂厂区地图' : `[${formFields.project || '造船项目'}] 3D/2D 船型视角`} 任意位置点击即可拾取 X, Y, Z 三维坐标</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMapPickerOpen(false)}
+                  className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs cursor-pointer shadow-lg shadow-cyan-600/30 transition-all flex items-center gap-1.5"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>确认采用当前地图坐标</span>
+                </button>
+                <button
+                  onClick={() => setIsMapPickerOpen(false)}
+                  className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* 拾取控制及信息栏 */}
+            <div className="px-6 py-2.5 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400">关联场景模式:</span>
+                  <span className={`font-bold px-2.5 py-1 rounded border ${formFields.associationType === 'global' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-cyan-950 text-cyan-300 border-cyan-800'}`}>
+                    {formFields.associationType === 'global' ? '🏢 全厂场景 (厂区平面图)' : '🚢 造船工程项目 (船型3D/2D模型)'}
+                  </span>
+                </div>
+                {formFields.associationType === 'project' && (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400">绑定造船工程:</span>
+                      <span className="font-bold text-sky-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                        {formFields.project || '517-9号 13000TEU集装箱船'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400">BIM模型分层:</span>
+                      <span className="font-bold text-amber-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                        {formFields.modelLevelName || '甲板层'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 font-mono text-cyan-300 bg-slate-950 px-4 py-1.5 rounded-lg border border-cyan-900/80 shadow-inner">
+                <span className="text-slate-400 font-sans">抓取坐标:</span>
+                <span>X: <strong className="text-white text-sm">{formFields.positionX ?? 407.49}</strong></span>
+                <span>Y: <strong className="text-white text-sm">{formFields.positionY ?? 0.02}</strong></span>
+                <span>Z: <strong className="text-white text-sm">{formFields.positionZ ?? -296.85}</strong></span>
+              </div>
+            </div>
+
+            {/* 地图/模型 交互绘图视窗 */}
+            <div 
+              className="relative flex-1 bg-slate-950 overflow-hidden cursor-crosshair group flex items-center justify-center select-none"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = ((e.clientX - rect.left) - rect.width / 2) * 1.5;
+                const clickZ = ((e.clientY - rect.top) - rect.height / 2) * 1.5;
+                setFormFields({
+                  ...formFields,
+                  positionX: Number(clickX.toFixed(2)),
+                  positionY: Number((formFields.positionY || 0.02).toFixed(2)),
+                  positionZ: Number(clickZ.toFixed(2))
+                });
+              }}
+            >
+              {/* 3D 精细物理网格背景 */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:32px_32px] opacity-60"></div>
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:160px_160px] opacity-40"></div>
+
+              {/* 极坐标中心轴 */}
+              <div className="absolute inset-x-0 top-1/2 h-0.5 bg-cyan-500/20 pointer-events-none"></div>
+              <div className="absolute inset-y-0 left-1/2 w-0.5 bg-cyan-500/20 pointer-events-none"></div>
+
+              {/* ---------------- 场景 1: 全厂场景 - 船厂全景地图背景 ---------------- */}
+              {formFields.associationType === 'global' ? (
+                <div className="absolute inset-10 border border-emerald-500/30 rounded-3xl pointer-events-none overflow-hidden bg-slate-900/40 backdrop-blur-3xs flex flex-col justify-between p-6">
+                  {/* 厂区顶栏标识 */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 bg-slate-900/90 border border-emerald-500/40 px-3 py-1.5 rounded-lg text-emerald-400 font-bold">
+                      <Building2 className="w-4 h-4" />
+                      <span>东南造船厂 - 厂区全景平面图 (全厂公共区域)</span>
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 bg-slate-950/80 px-2.5 py-1 rounded border border-slate-800">
+                      比例尺 1:5000 | 覆盖面积 1,200,000 m²
+                    </div>
+                  </div>
+
+                  {/* 船厂各功能区矢量插图背景 */}
+                  <div className="relative flex-1 my-4 grid grid-cols-12 grid-rows-6 gap-3 opacity-80">
+                    {/* 海域 & 舾装码头 (左侧) */}
+                    <div className="col-span-3 row-span-6 bg-cyan-950/40 border border-cyan-800/60 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden">
+                      <div className="absolute -right-10 top-1/2 -translate-y-1/2 text-cyan-900/30 font-black text-6xl rotate-90 select-none">
+                        OUT FITTING BERTH
+                      </div>
+                      <div>
+                        <div className="text-cyan-300 font-bold text-xs flex items-center gap-1">
+                          <Ship className="w-4 h-4 text-cyan-400" />
+                          <span>1#~4# 舾装码头 (海域)</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">深水停泊区 | 浮吊作业点</p>
+                      </div>
+                      <div className="space-y-1.5 text-[10px] text-cyan-200/80 font-mono">
+                        <div className="p-1.5 bg-cyan-900/30 rounded border border-cyan-700/40">⚓ 1号泊位 (13000TEU靠泊中)</div>
+                        <div className="p-1.5 bg-cyan-900/30 rounded border border-cyan-700/40">⚓ 2号泊位 (散货船舾装中)</div>
+                        <div className="p-1.5 bg-cyan-900/30 rounded border border-cyan-700/40">⚓ 3号/4号 备用码头</div>
+                      </div>
+                    </div>
+
+                    {/* 船坞区 (中部) */}
+                    <div className="col-span-5 row-span-4 bg-slate-800/50 border border-slate-700 rounded-xl p-3 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-amber-300 font-bold text-xs flex items-center gap-1">
+                          <Compass className="w-4 h-4 text-amber-400" />
+                          1号/2号 船坞总装区 (Dry Dock)
+                        </span>
+                        <span className="text-[10px] text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800">
+                          600t 龙门吊轨道覆盖
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 my-2">
+                        <div className="h-20 bg-slate-900/90 rounded border border-dashed border-amber-500/40 p-2 flex flex-col justify-between">
+                          <span className="text-[10px] text-amber-200 font-mono font-bold">1号大船坞 (30万吨)</span>
+                          <span className="text-[9px] text-slate-500">搭载合拢主战场</span>
+                        </div>
+                        <div className="h-20 bg-slate-900/90 rounded border border-dashed border-amber-500/40 p-2 flex flex-col justify-between">
+                          <span className="text-[10px] text-amber-200 font-mono font-bold">2号中船坞 (15万吨)</span>
+                          <span className="text-[9px] text-slate-500">半潜浮箱阶段</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400">包含主基站BS-001/002基站分布区</span>
+                    </div>
+
+                    {/* 加工及涂装车间 (右侧) */}
+                    <div className="col-span-4 row-span-6 bg-slate-850/60 border border-slate-700/80 rounded-xl p-3 flex flex-col justify-between">
+                      <div>
+                        <div className="text-indigo-300 font-bold text-xs flex items-center gap-1">
+                          <Building2 className="w-4 h-4 text-indigo-400" />
+                          制造加工与涂装车间群
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">钢材下料 / 小组立 / 喷砂涂装区</p>
+                      </div>
+
+                      <div className="space-y-1.5 text-[10px] text-slate-300">
+                        <div className="p-2 bg-slate-900/80 rounded border border-slate-700">🏭 钢材切割加工车间 (1号楼)</div>
+                        <div className="p-2 bg-slate-900/80 rounded border border-slate-700">🎨 封闭式喷砂涂装车间 (2号楼)</div>
+                        <div className="p-2 bg-slate-900/80 rounded border border-slate-700">📦 舾装件及管件仓库 (3号楼)</div>
+                        <div className="p-2 bg-slate-900/80 rounded border border-slate-700">🏢 厂区综合行政办公楼</div>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono">厂区北门入口 / 围栏隔离网</div>
+                    </div>
+
+                    {/* 厂区道路网 (下方) */}
+                    <div className="col-span-5 row-span-2 bg-slate-900/70 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-slate-300 font-bold text-xs">厂区交通主干道 & 运输轨道</span>
+                        <p className="text-[10px] text-slate-500">平板运输车 / 模块车通行主通道</p>
+                      </div>
+                      <span className="text-xs font-mono text-emerald-400 font-bold">R-ROAD-01</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800 pt-2">
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <MapPin className="w-3.5 h-3.5" />
+                      全厂场景模式：点击厂区图任意位置定位设备
+                    </span>
+                    <span className="font-mono text-slate-500">东南造船厂 3D 智慧物联网基座</span>
+                  </div>
+                </div>
+              ) : (
+                /* ---------------- 场景 2: 造船工程项目 - 船型结构 3D/2D CAD 模型图背景 ---------------- */
+                <div className="absolute inset-10 border border-cyan-500/30 rounded-3xl pointer-events-none overflow-hidden bg-slate-900/40 backdrop-blur-3xs flex flex-col justify-between p-6">
+                  {/* 船舶项目顶栏标识 */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 bg-slate-900/90 border border-cyan-500/40 px-3 py-1.5 rounded-lg text-cyan-300 font-bold">
+                      <Ship className="w-4 h-4 text-cyan-400" />
+                      <span>{formFields.project || '517-9号 13000TEU集装箱船'} - 3D CAD 数字孪生船型模型</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-amber-300 bg-amber-950/80 px-2.5 py-1 rounded border border-amber-800 font-bold">
+                        当前分层: {formFields.modelLevelName || '甲板层'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 船体矢量 Blueprint 结构背景 */}
+                  <div className="relative flex-1 my-4 flex items-center justify-center">
+                    {/* 船外形线 (Bulbous Bow -> Stern) */}
+                    <div className="w-full h-48 border-2 border-cyan-400/50 rounded-[120px_20px_20px_100px] bg-cyan-950/20 backdrop-blur-2xs relative p-4 flex flex-col justify-between overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.15)]">
+                      {/* 船头 (Bow) */}
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400 font-bold text-xs font-mono rotate-90">
+                        ◀ 球鼻艏 (BOW) #240
+                      </div>
+
+                      {/* 船尾 (Stern) */}
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 font-bold text-xs font-mono -rotate-90">
+                        船艉 (STERN) #0 ▶
+                      </div>
+
+                      {/* 肋骨编号网格线 */}
+                      <div className="absolute inset-x-12 inset-y-0 flex justify-between opacity-30 pointer-events-none">
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <div key={i} className="h-full border-r border-dashed border-cyan-400 flex flex-col justify-between text-[8px] font-mono text-cyan-300 pl-0.5 pt-1">
+                            <span>#{220 - i * 20}</span>
+                            <span>FR-{i + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 货舱及舱室划分 */}
+                      <div className="relative z-10 grid grid-cols-6 gap-2 my-auto px-10">
+                        <div className="h-24 bg-slate-900/80 rounded border border-cyan-500/30 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-cyan-300">1# 货舱区</span>
+                          <span className="text-[9px] text-slate-500">HOLD 01</span>
+                        </div>
+                        <div className="h-24 bg-slate-900/80 rounded border border-cyan-500/30 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-cyan-300">2# 货舱区</span>
+                          <span className="text-[9px] text-slate-500">HOLD 02</span>
+                        </div>
+                        <div className="h-24 bg-slate-900/80 rounded border border-cyan-500/30 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-cyan-300">3# 货舱区</span>
+                          <span className="text-[9px] text-slate-500">HOLD 03</span>
+                        </div>
+                        <div className="h-24 bg-amber-950/40 rounded border border-amber-500/50 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-amber-300">驾驶楼/上层建筑</span>
+                          <span className="text-[9px] text-amber-200/80">BRIDGE DECK</span>
+                        </div>
+                        <div className="h-24 bg-slate-900/80 rounded border border-cyan-500/30 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-cyan-300">4# 货舱区</span>
+                          <span className="text-[9px] text-slate-500">HOLD 04</span>
+                        </div>
+                        <div className="h-24 bg-slate-900/80 rounded border border-cyan-500/30 p-2 flex flex-col justify-between text-center">
+                          <span className="text-[10px] font-bold text-rose-300">机舱 (ENGINE)</span>
+                          <span className="text-[9px] text-rose-400">ME-01</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800 pt-2">
+                    <span className="flex items-center gap-1 text-cyan-400">
+                      <MapPin className="w-3.5 h-3.5" />
+                      船模型视角：点击船体区域拾取分层具体安装坐标
+                    </span>
+                    <span className="font-mono text-slate-500">LOA: 335m | Beam: 51m | Depth: 30m</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 点击高亮指针标记 */}
+              <div 
+                className="absolute z-30 transition-all duration-150 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{
+                  left: `calc(50% + ${(formFields.positionX ?? 407.49) / 1.5}px)`,
+                  top: `calc(50% + ${(formFields.positionZ ?? -296.85) / 1.5}px)`
+                }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-cyan-500/30 border-2 border-cyan-400 animate-ping absolute -inset-1"></div>
+                  <div className="w-8 h-8 rounded-full bg-cyan-500 border-2 border-white flex items-center justify-center shadow-[0_0_20px_#06b6d4]">
+                    <MapPin className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="mt-1.5 bg-slate-900/90 text-cyan-300 border border-cyan-500/60 text-xs font-mono font-bold px-2.5 py-1 rounded-lg shadow-2xl whitespace-nowrap">
+                    X: {formFields.positionX ?? 407.49}, Y: {formFields.positionY ?? 0.02}, Z: {formFields.positionZ ?? -296.85}
+                  </div>
+                </div>
+              </div>
+
+              <div className="absolute bottom-4 left-6 bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono shadow-xl pointer-events-none flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>💡 提示：点击上图任意位置可精准抓取设备安装坐标 (X, Y, Z)</span>
+              </div>
+            </div>
+
+            {/* 底部确认栏 */}
+            <div className="px-6 py-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center shrink-0 text-xs">
+              <span className="text-slate-400">
+                当前准备更新三维定位坐标: <strong className="text-cyan-300 font-mono">X={formFields.positionX ?? 407.49}, Y={formFields.positionY ?? 0.02}, Z={formFields.positionZ ?? -296.85}</strong>
+              </span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMapPickerOpen(false)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMapPickerOpen(false)}
+                  className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs cursor-pointer shadow-lg shadow-cyan-600/30 transition-all"
+                >
+                  确认保存当前地图坐标
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. 查看操作切换到地图界面 & 弹窗显示设备详细信息 */}
+      {mapViewDevice && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl border border-sky-500/30 overflow-hidden flex flex-col h-[85vh]">
+            {/* 地图驾驶舱顶部 Header */}
+            <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400">
+                  <MapPin className="w-5 h-5 text-sky-400 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                    {mapViewDevice.name} — 地图物理关联视角
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono border border-emerald-500/30">
+                      {mapViewDevice.status || '在线工作'}
+                    </span>
+                  </h3>
+                  <p className="text-slate-400 text-xs">实时切换至地图界面，展示设备空间绝对坐标及绑定场景</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setMapViewDevice(null)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 主界面：双栏，左侧全景地图视角，右侧详细参数弹窗卡片 */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* 左侧：可视化 3D/2D 地图窗口 */}
+              <div className="flex-1 relative bg-slate-950 border-r border-slate-800 overflow-hidden flex items-center justify-center">
+                {/* 3D 网格与透视效果 */}
+                <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
+
+                <div className="absolute inset-12 border border-sky-500/20 rounded-3xl pointer-events-none flex items-center justify-center">
+                  <div className="text-center space-y-2 opacity-30">
+                    <Ship className="w-24 h-24 text-sky-400 mx-auto" />
+                    <p className="text-sm font-mono text-sky-300">[{mapViewDevice.project || '全厂通用设备'}] 全局数字孪生视窗</p>
+                  </div>
+                </div>
+
+                {/* 设备定位在地图上的高亮点与坐标弹窗 */}
+                <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-300">
+                  {/* 波纹底盘 */}
+                  <div className="w-24 h-24 rounded-full border-2 border-sky-400/40 bg-sky-500/10 animate-ping absolute -top-8"></div>
+                  
+                  {/* 设备图标 */}
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-400 border-2 border-white flex items-center justify-center shadow-[0_0_25px_#38bdf8] text-white">
+                    <Radio className="w-6 h-6 animate-pulse" />
+                  </div>
+
+                  {/* 悬浮坐标说明弹窗卡片 */}
+                  <div className="mt-3 bg-slate-900/95 border border-sky-500/50 rounded-xl p-3 shadow-2xl text-xs space-y-1 min-w-[220px]">
+                    <div className="flex justify-between items-center text-cyan-300 font-bold border-b border-slate-800 pb-1">
+                      <span>{mapViewDevice.code || mapViewDevice.sn || mapViewDevice.id}</span>
+                      <span className="text-[10px] text-emerald-400">定位精度: ±2cm</span>
+                    </div>
+                    <div className="text-slate-300 font-mono text-[11px] pt-1">
+                      <div>X: <span className="text-white font-bold">{mapViewDevice.positionX ?? 407.49}</span></div>
+                      <div>Y: <span className="text-white font-bold">{mapViewDevice.positionY ?? 0.02}</span></div>
+                      <div>Z: <span className="text-white font-bold">{mapViewDevice.positionZ ?? -296.85}</span></div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                      安装地点: {mapViewDevice.location || mapViewDevice.installationSite || '测试区域'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-cyan-300">
+                  🌐 关联项目: {mapViewDevice.project || '全厂通用'} | 绑定分层: {mapViewDevice.modelLevelName || '甲板层'}
+                </div>
+              </div>
+
+              {/* 右侧：设备详细参数弹窗面板 */}
+              <div className="w-80 bg-slate-900 p-5 border-l border-slate-800 overflow-y-auto space-y-4 text-xs text-slate-300">
+                <div className="pb-3 border-b border-slate-800">
+                  <h4 className="font-bold text-white text-sm mb-1">{mapViewDevice.name}</h4>
+                  <p className="text-slate-400 text-[11px] font-mono">编码: {mapViewDevice.code || mapViewDevice.sn}</p>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1 font-mono">
+                    <span className="text-slate-500 text-[10px] block">项目关联模式</span>
+                    <span className="text-sky-400 font-bold block">{mapViewDevice.project || '全厂通用设备'}</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1 font-mono">
+                    <span className="text-slate-500 text-[10px] block">3D BIM 模型分层</span>
+                    <span className="text-amber-300 font-bold block">{mapViewDevice.modelLevelName || '甲板层'}</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1.5">
+                    <span className="text-slate-500 text-[10px] block">设备属性要素明细</span>
+                    <div className="flex justify-between text-slate-400">
+                      <span>安装场所:</span>
+                      <strong className="text-white">{mapViewDevice.installationSite || '室外'}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>回收状态:</span>
+                      <strong className="text-emerald-400">{mapViewDevice.recycleStatus || '设备安装'}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>信号丢失:</span>
+                      <strong className="text-white">{mapViewDevice.signalLossTime ?? 5} 分钟</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>电子围栏:</span>
+                      <strong className="text-cyan-300 font-mono">{mapViewDevice.electricFence || '517-9'}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-800 flex justify-end">
+                  <button
+                    onClick={() => setMapViewDevice(null)}
+                    className="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition-colors cursor-pointer text-xs"
+                  >
+                    返回设备管理表单
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
