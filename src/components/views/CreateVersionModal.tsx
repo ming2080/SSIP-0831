@@ -416,14 +416,24 @@ export function CreateVersionModal({
 
               {/* 施工阶段全称：下拉选择预设值 */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  <span className="text-red-500 mr-1">*</span>施工阶段全称
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span><span className="text-red-500 mr-1">*</span>施工阶段全称</span>
+                  {isEdit && (
+                    <span className="text-[10px] text-amber-700 font-medium bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" />
+                      编辑时不可变更
+                    </span>
+                  )}
                 </label>
                 <select
                   value={phaseName}
                   onChange={e => setPhaseName(e.target.value)}
-                  disabled={isHistoricalArchived}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  disabled={isEdit || isHistoricalArchived}
+                  className={`w-full px-3 py-2 border rounded-xl text-sm font-medium transition-all ${
+                    isEdit || isHistoricalArchived
+                      ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed'
+                      : 'bg-white text-slate-800 border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                  }`}
                 >
                   {CONSTRUCTION_PHASE_PRESETS.map((preset) => (
                     <option key={preset} value={preset}>
@@ -431,12 +441,24 @@ export function CreateVersionModal({
                     </option>
                   ))}
                 </select>
+                {isEdit && (
+                  <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-amber-600 shrink-0" />
+                    施工阶段不允许修改
+                  </p>
+                )}
               </div>
 
               {/* 项目施工状态切换与继承配置 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                   <span><span className="text-red-500 mr-1">*</span>项目施工状态</span>
+                  {isEdit && (
+                    <span className="text-[10px] text-amber-700 font-medium bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" />
+                      编辑时不可变更
+                    </span>
+                  )}
                   {!isEdit && previousProjectStatus && (
                     <span className="text-[10px] text-blue-600 font-medium bg-blue-50 border border-blue-200/80 px-1 rounded">继承上个阶段</span>
                   )}
@@ -447,8 +469,12 @@ export function CreateVersionModal({
                 <select
                   value={projectStatus}
                   onChange={e => setProjectStatus(e.target.value as ProjectStatusType)}
-                  disabled={isHistoricalArchived}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  disabled={isEdit || isHistoricalArchived}
+                  className={`w-full px-3 py-2 border rounded-xl text-sm font-bold transition-all ${
+                    isEdit || isHistoricalArchived
+                      ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed'
+                      : 'bg-white text-slate-800 border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                  }`}
                 >
                   {PROJECT_STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -456,6 +482,12 @@ export function CreateVersionModal({
                     </option>
                   ))}
                 </select>
+                {isEdit && (
+                  <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-amber-600 shrink-0" />
+                    项目施工状态不允许修改
+                  </p>
+                )}
               </div>
 
               {/* 开始生效时间点（支持选择日期和时间） */}
@@ -531,18 +563,37 @@ export function CreateVersionModal({
 
             {/* 自动关联配置开关：仅在非竣工交船状态下展示 */}
             {projectStatus !== 'completed' && (
-              <div className="flex items-start gap-2.5 p-3.5 bg-white border border-slate-200/90 rounded-xl shadow-2xs">
+              <div className={`flex items-start gap-2.5 p-3.5 border rounded-xl shadow-2xs transition-all ${
+                isEdit || isHistoricalArchived
+                  ? 'bg-slate-100/90 border-slate-200/90 cursor-not-allowed opacity-80'
+                  : 'bg-white border-slate-200/90'
+              }`}>
                 <input 
                   type="checkbox" 
                   id="sync-checkbox"
                   checked={sync}
-                  disabled={isHistoricalArchived}
+                  disabled={isEdit || isHistoricalArchived}
                   onChange={e => setSync(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer accent-blue-600 mt-0.5 shrink-0 disabled:cursor-not-allowed"
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 accent-blue-600 mt-0.5 shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
                 />
-                <label htmlFor="sync-checkbox" className="text-xs text-slate-700 cursor-pointer leading-relaxed">
-                  <strong className="text-slate-900 font-bold">开启自动关联：上阶段绑定的设备与电子围栏设置继续延用。</strong>
-                  <span className="block text-[11px] text-slate-500 mt-0.5">
+                <label 
+                  htmlFor="sync-checkbox" 
+                  className={`text-xs leading-relaxed w-full ${
+                    isEdit || isHistoricalArchived ? 'cursor-not-allowed text-slate-500' : 'cursor-pointer text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className={isEdit || isHistoricalArchived ? 'text-slate-600 font-bold' : 'text-slate-900 font-bold'}>
+                      开启自动关联：上阶段绑定的设备与电子围栏设置继续延用。
+                    </strong>
+                    {(isEdit || isHistoricalArchived) && (
+                      <span className="text-[10px] text-amber-700 font-medium bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
+                        <Lock className="w-2.5 h-2.5" />
+                        编辑时不可变更
+                      </span>
+                    )}
+                  </div>
+                  <span className={`block text-[11px] mt-0.5 ${isEdit || isHistoricalArchived ? 'text-slate-400' : 'text-slate-500'}`}>
                     勾选后，新阶段版本生效时将自动续用并沿用上一施工阶段绑定的防爆定位基站、受限空间气体传感终端与电子围栏安全防区。
                   </span>
                 </label>

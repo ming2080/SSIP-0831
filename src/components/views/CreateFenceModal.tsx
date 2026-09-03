@@ -30,6 +30,8 @@ export interface FenceData {
   projectName: string; // 显示名称
   projectPhase?: string; // 关联工程阶段 (选择关联船舶项目时必填)
   projectSection?: string; // 关联船体舱段/部位 (选择关联船舶项目时必填)
+  modelLevel?: string; // 船型 3D BIM 模型分层代码 ('deck' | 'middle' | 'bottom' | 'engine' | 'bridge')
+  modelLevelName?: string; // 船型模型分层名称
   type: string;
   color: string;
   shape: string;
@@ -78,6 +80,15 @@ const YARD_AREA_OPTIONS = [
   '钢材下料与分段预处理车间',
   '涂装防腐与危化品库区',
   '管业加工与机加总装车间'
+];
+
+// 船型模型分层选项 (造船项目二级选择)
+export const FENCE_MODEL_LAYER_OPTIONS = [
+  { id: 'deck', name: '甲板层', fullName: '甲板层 (主甲板/露天作业区)' },
+  { id: 'middle', name: '中舱层', fullName: '中舱层 (货舱上部/中层平台)' },
+  { id: 'bottom', name: '底舱层', fullName: '底舱层 (双层底/压载密闭舱)' },
+  { id: 'engine', name: '机舱区', fullName: '机舱动力区 (主机/辅机与管系舱)' },
+  { id: 'bridge', name: '驾驶台', fullName: '驾驶台 (上层建筑/驾控生活区)' }
 ];
 
 // 施工工程阶段列表
@@ -200,6 +211,7 @@ export function CreateFenceModal({
   const [scopeType, setScopeType] = useState<'yard' | 'project'>(currentProjectId === 'yard' ? 'yard' : 'project');
   const [yardArea, setYardArea] = useState<string>('全厂通用公共区域');
   const [projectId, setProjectId] = useState<string>(currentProjectId === 'yard' ? 'PRJ-2026-LNG01' : currentProjectId);
+  const [modelLevel, setModelLevel] = useState<string>('deck'); // 船型模型分层 (造船项目二级选择)
   const [projectPhase, setProjectPhase] = useState<string>('船体合拢与主结构搭载');
   const [projectSection, setProjectSection] = useState<string>('全船通用作业面');
   
@@ -268,7 +280,7 @@ export function CreateFenceModal({
   const handleConfirm = () => {
     setIsSubmitted(true);
     
-    // 当选择关联船舶项目时，校验3个关联表单项为必填项 (需求1)
+    // 当选择关联船舶项目时，校验关联表单项为必填项 (需求1)
     if (isNameEmpty || isProjectIdEmpty || isProjectPhaseEmpty || isProjectSectionEmpty) {
       return;
     }
@@ -277,6 +289,8 @@ export function CreateFenceModal({
     const projectName = scopeType === 'yard' 
       ? `东南造船厂 (厂区公共区域)`
       : (selectedProj ? selectedProj.name : '造船工程项目');
+
+    const selectedLayer = FENCE_MODEL_LAYER_OPTIONS.find(l => l.id === modelLevel);
 
     const newFence: FenceData = {
       id: `FENCE-${Date.now()}`,
@@ -288,6 +302,8 @@ export function CreateFenceModal({
       projectName: projectName,
       projectPhase: scopeType === 'project' ? projectPhase : undefined,
       projectSection: scopeType === 'project' ? projectSection : undefined,
+      modelLevel: scopeType === 'project' ? modelLevel : undefined,
+      modelLevelName: scopeType === 'project' ? (selectedLayer ? selectedLayer.fullName : '甲板层') : undefined,
       type: fenceType,
       color: fenceColor,
       shape: fenceShape,
@@ -516,7 +532,7 @@ export function CreateFenceModal({
                     )}
                   </div>
 
-                  {/* 2) 关联施工阶段 & 3) 船体舱段/部位 (必填，带红星号) */}
+                  {/* 2) 关联施工阶段 & 3) 船体舱段与 3D BIM 模型分层 (二级选择合并，显示分层数据) */}
                   <div className="grid grid-cols-2 gap-3 pt-0.5">
                     {/* 关联施工阶段 */}
                     <div>
@@ -544,29 +560,39 @@ export function CreateFenceModal({
                       )}
                     </div>
 
-                    {/* 船体舱段/部位 */}
+                    {/* 3D BIM 模型分层 */}
                     <div>
-                      <label className="text-xs font-semibold text-slate-700 mb-1 flex items-center">
-                        <span className="text-rose-500 font-bold mr-1">*</span>船体舱段/部位
+                      <label className="text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                        <span className="flex items-center">
+                          <span className="text-rose-500 font-bold mr-1">*</span>模型分层 (3D BIM)
+                        </span>
+                        <span className="text-[10px] text-blue-600 font-normal">二级立体选择</span>
                       </label>
                       <div className="relative">
                         <select
-                          value={projectSection}
-                          onChange={(e) => setProjectSection(e.target.value)}
-                          className={`w-full px-2.5 py-1.5 bg-white border rounded-md text-xs text-slate-800 focus:outline-none transition-colors appearance-none cursor-pointer pr-7 truncate ${
-                            showProjectSectionError ? 'border-rose-500 ring-1 ring-rose-500/20' : 'border-slate-300 focus:border-blue-500'
+                          value={modelLevel}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setModelLevel(val);
+                            const matchedLayer = FENCE_MODEL_LAYER_OPTIONS.find(l => l.id === val);
+                            if (matchedLayer) {
+                              setProjectSection(matchedLayer.fullName);
+                            }
+                          }}
+                          className={`w-full px-2.5 py-1.5 bg-white border rounded-md text-xs text-slate-800 focus:outline-none transition-colors appearance-none cursor-pointer pr-7 truncate font-medium ${
+                            showProjectSectionError ? 'border-rose-500 ring-1 ring-rose-500/20' : 'border-blue-300 focus:border-blue-500 bg-blue-50/20'
                           }`}
                         >
-                          {PROJECT_SECTION_OPTIONS.map((sec) => (
-                            <option key={sec} value={sec}>
-                              {sec}
+                          {FENCE_MODEL_LAYER_OPTIONS.map((layer) => (
+                            <option key={layer.id} value={layer.id}>
+                              {layer.fullName}
                             </option>
                           ))}
                         </select>
                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                       {showProjectSectionError && (
-                        <p className="text-rose-500 text-[11px] mt-1 font-normal">请选择船体舱段/部位</p>
+                        <p className="text-rose-500 text-[11px] mt-1 font-normal">请选择模型分层</p>
                       )}
                     </div>
                   </div>

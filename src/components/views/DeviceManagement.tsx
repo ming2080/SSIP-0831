@@ -144,8 +144,6 @@ export interface GasDetectorDevice {
   modelLevelName?: string;// 模型分层名称
   location: string;        // 安装位置
   floor?: string;          // 安装楼层
-  gasType?: string;        // 检测气体类型
-  alarmThreshold?: string; // 告警阀值
   positionX?: number;
   positionY?: number;
   positionZ?: number;
@@ -167,7 +165,6 @@ export interface AlarmDevice {
   modelLevelName?: string;// 模型分层名称
   location: string;        // 安装位置
   floor?: string;          // 安装楼层
-  decibel?: string;        // 报警声级dB
   positionX?: number;
   positionY?: number;
   positionZ?: number;
@@ -396,30 +393,30 @@ const initialBaseStations: BaseStationDevice[] = [
 
 // 初始数据：气体探测器
 const initialGasDetectors: GasDetectorDevice[] = [
-  { id: 'GD-01', seq: 1, createdAt: '2026-08-20 14:32:59', sn: '866833080749440', name: '866833080749440', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '517-9号船机舱', floor: '', gasType: '多气体四合一 (O2/CO/H2S/EX)', alarmThreshold: 'O2 < 19.5%' },
-  { id: 'GD-02', seq: 2, createdAt: '2026-08-20 14:32:46', sn: '866833080749051', name: '866833080749051', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'bottom', modelLevelName: '底舱层 (双层底/压载密闭舱)', location: '519-1机舱', floor: '', gasType: '氧气/一氧化碳', alarmThreshold: 'CO > 30ppm' },
-  { id: 'GD-03', seq: 3, createdAt: '2026-08-20 14:32:32', sn: '866833080749630', name: '866833080749630', associationType: 'project', projectId: 'PRJ-2026-BOX12', project: '24,000 TEU 超大型集装箱船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '平船台机舱', floor: '', gasType: '硫化氢监测探头', alarmThreshold: 'H2S > 10ppm' },
-  { id: 'GD-04', seq: 4, createdAt: '2026-08-20 14:32:17', sn: '866833080748954', name: '866833080748954', associationType: 'global', projectId: '', project: '全厂通用设备', location: '预处理车间', floor: '', gasType: '可燃气体 (EX)', alarmThreshold: 'EX > 20%LEL' },
-  { id: 'GD-05', seq: 5, createdAt: '2026-08-20 14:31:56', sn: '866833080749267', name: '866833080749267', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '628-7机舱', floor: '', gasType: '四合一测气仪', alarmThreshold: '标准防爆设置' },
-  { id: 'GD-06', seq: 6, createdAt: '2026-08-20 14:31:41', sn: '866833080749283', name: '866833080749283', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'bottom', modelLevelName: '底舱层 (双层底/压载密闭舱)', location: '628-8机舱', floor: '', gasType: '四合一测气仪', alarmThreshold: '标准防爆设置' },
-  { id: 'GD-07', seq: 7, createdAt: '2026-08-20 14:31:26', sn: '866833080749689', name: '866833080749689', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'middle', modelLevelName: '中舱层 (货舱上部/中层平台)', location: '716-10机舱', floor: '', gasType: '氧气检测仪', alarmThreshold: 'O2 < 19.5%' },
-  { id: 'GD-08', seq: 8, createdAt: '2026-08-20 14:31:12', sn: '866833080909333', name: '866833080909333', associationType: 'global', projectId: '', project: '全厂通用设备', location: '涂装车间', floor: '', gasType: '一氧化碳检测', alarmThreshold: 'CO > 50ppm' },
-  { id: 'GD-09', seq: 9, createdAt: '2026-08-20 14:30:58', sn: '866833080749341', name: '866833080749341', associationType: 'global', projectId: '', project: '全厂通用设备', location: '危化品仓库', floor: '', gasType: '四合一测气仪', alarmThreshold: '标准设置' },
-  { id: 'GD-10', seq: 10, createdAt: '2026-08-20 14:30:42', sn: '866833080749317', name: '866833080749317', associationType: 'project', projectId: 'PRJ-2026-BULK04', project: '82,000 DWT 卡姆萨尔型散货船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '14500-3机舱', floor: '', gasType: '硫化氢/VOC', alarmThreshold: 'VOC > 100ppm' }
+  { id: 'GD-01', seq: 1, createdAt: '2026-08-20 14:32:59', sn: '866833080749440', name: '866833080749440', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '517-9号船机舱', floor: '' },
+  { id: 'GD-02', seq: 2, createdAt: '2026-08-20 14:32:46', sn: '866833080749051', name: '866833080749051', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'bottom', modelLevelName: '底舱层 (双层底/压载密闭舱)', location: '519-1机舱', floor: '' },
+  { id: 'GD-03', seq: 3, createdAt: '2026-08-20 14:32:32', sn: '866833080749630', name: '866833080749630', associationType: 'project', projectId: 'PRJ-2026-BOX12', project: '24,000 TEU 超大型集装箱船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '平船台机舱', floor: '' },
+  { id: 'GD-04', seq: 4, createdAt: '2026-08-20 14:32:17', sn: '866833080748954', name: '866833080748954', associationType: 'global', projectId: '', project: '全厂通用设备', location: '预处理车间', floor: '' },
+  { id: 'GD-05', seq: 5, createdAt: '2026-08-20 14:31:56', sn: '866833080749267', name: '866833080749267', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '628-7机舱', floor: '' },
+  { id: 'GD-06', seq: 6, createdAt: '2026-08-20 14:31:41', sn: '866833080749283', name: '866833080749283', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'bottom', modelLevelName: '底舱层 (双层底/压载密闭舱)', location: '628-8机舱', floor: '' },
+  { id: 'GD-07', seq: 7, createdAt: '2026-08-20 14:31:26', sn: '866833080749689', name: '866833080749689', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'middle', modelLevelName: '中舱层 (货舱上部/中层平台)', location: '716-10机舱', floor: '' },
+  { id: 'GD-08', seq: 8, createdAt: '2026-08-20 14:31:12', sn: '866833080909333', name: '866833080909333', associationType: 'global', projectId: '', project: '全厂通用设备', location: '涂装车间', floor: '' },
+  { id: 'GD-09', seq: 9, createdAt: '2026-08-20 14:30:58', sn: '866833080749341', name: '866833080749341', associationType: 'global', projectId: '', project: '全厂通用设备', location: '危化品仓库', floor: '' },
+  { id: 'GD-10', seq: 10, createdAt: '2026-08-20 14:30:42', sn: '866833080749317', name: '866833080749317', associationType: 'project', projectId: 'PRJ-2026-BULK04', project: '82,000 DWT 卡姆萨尔型散货船', modelLevel: 'engine', modelLevelName: '机舱动力区 (主机/辅机与管系舱)', location: '14500-3机舱', floor: '' }
 ];
 
 // 初始数据：声光报警器
 const initialAlarms: AlarmDevice[] = [
-  { id: 'AL-01', seq: 1, createdAt: '2026-08-20 14:35:57', sn: '867655086345884', name: '867655086345884', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'engine', modelLevelName: '机舱动力区', location: '145-3机舱', floor: '', decibel: '110dB' },
-  { id: 'AL-02', seq: 2, createdAt: '2026-08-20 14:35:29', sn: '867655086341883', name: '867655086341883', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'middle', modelLevelName: '中舱层', location: '519-1机舱', floor: '', decibel: '105dB' },
-  { id: 'AL-03', seq: 3, createdAt: '2026-08-20 14:35:17', sn: '867655086341560', name: '867655086341560', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'engine', modelLevelName: '机舱动力区', location: '628-7机舱', floor: '', decibel: '110dB' },
-  { id: 'AL-04', seq: 4, createdAt: '2026-08-20 14:35:05', sn: '867655085879206', name: '867655085879206', associationType: 'global', projectId: '', project: '全厂通用设备', location: '气瓶集中存放区', floor: '', decibel: '100dB' },
-  { id: 'AL-05', seq: 5, createdAt: '2026-08-20 14:34:51', sn: '867655086346148', name: '867655086346148', associationType: 'global', projectId: '', project: '全厂通用设备', location: '配电中心', floor: '', decibel: '115dB (防爆型)' },
-  { id: 'AL-06', seq: 6, createdAt: '2026-08-20 14:34:40', sn: '867655086344929', name: '867655086344929', associationType: 'project', projectId: 'PRJ-2026-BOX12', project: '24,000 TEU 超大型集装箱船', modelLevel: 'deck', modelLevelName: '甲板层', location: '716-10机舱', floor: '', decibel: '110dB' },
-  { id: 'AL-07', seq: 7, createdAt: '2026-08-20 14:34:27', sn: '867655085878844', name: '867655085878844', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'bottom', modelLevelName: '底舱层', location: '628-8机舱', floor: '', decibel: '105dB' },
-  { id: 'AL-08', seq: 8, createdAt: '2026-08-20 14:34:14', sn: '867655086346221', name: '867655086346221', associationType: 'project', projectId: 'PRJ-2026-PSV01', project: '75M 动力定位平台供应船 (DP-2)', modelLevel: 'bridge', modelLevelName: '驾驶台', location: '平船台机舱', floor: '', decibel: '110dB' },
-  { id: 'AL-09', seq: 9, createdAt: '2026-08-20 14:33:59', sn: '867655086347864', name: '867655086347864', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'deck', modelLevelName: '甲板层', location: '517-9号船机舱', floor: '', decibel: '110dB' },
-  { id: 'AL-10', seq: 10, createdAt: '2026-08-19 14:49:25', sn: '867655086345926', name: '867655086345926', associationType: 'global', projectId: '', project: '全厂通用设备', location: '变电站房', floor: '', decibel: '105dB' }
+  { id: 'AL-01', seq: 1, createdAt: '2026-08-20 14:35:57', sn: '867655086345884', name: '867655086345884', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'engine', modelLevelName: '机舱动力区', location: '145-3机舱', floor: '' },
+  { id: 'AL-02', seq: 2, createdAt: '2026-08-20 14:35:29', sn: '867655086341883', name: '867655086341883', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'middle', modelLevelName: '中舱层', location: '519-1机舱', floor: '' },
+  { id: 'AL-03', seq: 3, createdAt: '2026-08-20 14:35:17', sn: '867655086341560', name: '867655086341560', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'engine', modelLevelName: '机舱动力区', location: '628-7机舱', floor: '' },
+  { id: 'AL-04', seq: 4, createdAt: '2026-08-20 14:35:05', sn: '867655085879206', name: '867655085879206', associationType: 'global', projectId: '', project: '全厂通用设备', location: '气瓶集中存放区', floor: '' },
+  { id: 'AL-05', seq: 5, createdAt: '2026-08-20 14:34:51', sn: '867655086346148', name: '867655086346148', associationType: 'global', projectId: '', project: '全厂通用设备', location: '配电中心', floor: '' },
+  { id: 'AL-06', seq: 6, createdAt: '2026-08-20 14:34:40', sn: '867655086344929', name: '867655086344929', associationType: 'project', projectId: 'PRJ-2026-BOX12', project: '24,000 TEU 超大型集装箱船', modelLevel: 'deck', modelLevelName: '甲板层', location: '716-10机舱', floor: '' },
+  { id: 'AL-07', seq: 7, createdAt: '2026-08-20 14:34:27', sn: '867655085878844', name: '867655085878844', associationType: 'project', projectId: 'PRJ-2026-TANK02', project: '30万吨 VLCC 超大型原油船', modelLevel: 'bottom', modelLevelName: '底舱层', location: '628-8机舱', floor: '' },
+  { id: 'AL-08', seq: 8, createdAt: '2026-08-20 14:34:14', sn: '867655086346221', name: '867655086346221', associationType: 'project', projectId: 'PRJ-2026-PSV01', project: '75M 动力定位平台供应船 (DP-2)', modelLevel: 'bridge', modelLevelName: '驾驶台', location: '平船台机舱', floor: '' },
+  { id: 'AL-09', seq: 9, createdAt: '2026-08-20 14:33:59', sn: '867655086347864', name: '867655086347864', associationType: 'project', projectId: 'PRJ-2026-LNG01', project: '17.4万m³ 薄膜型大型LNG船 1号舰', modelLevel: 'deck', modelLevelName: '甲板层', location: '517-9号船机舱', floor: '' },
+  { id: 'AL-10', seq: 10, createdAt: '2026-08-19 14:49:25', sn: '867655086345926', name: '867655086345926', associationType: 'global', projectId: '', project: '全厂通用设备', location: '变电站房', floor: '' }
 ];
 
 // 初始数据：摄像头
@@ -611,8 +608,6 @@ export function DeviceManagement() {
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         location: '517-9号船机舱',
         floor: '',
-        gasType: '多气体四合一 (O2/CO/H2S/EX)',
-        alarmThreshold: 'O2 < 19.5%',
         positionX: 312.50,
         positionY: 12.80,
         positionZ: -180.20,
@@ -631,7 +626,6 @@ export function DeviceManagement() {
         modelLevelName: MODEL_LAYER_OPTIONS[0].fullName,
         location: '145-3机舱',
         floor: '',
-        decibel: '110dB',
         positionX: 185.00,
         positionY: 6.50,
         positionZ: -45.00,
@@ -799,9 +793,7 @@ export function DeviceManagement() {
           modelLevel: finalModelLevel,
           modelLevelName: finalModelLevelName,
           location: formFields.location || '',
-          floor: formFields.floor || '',
-          gasType: formFields.gasType || '四合一测气仪',
-          alarmThreshold: formFields.alarmThreshold || '标准设置'
+          floor: formFields.floor || ''
         };
         setGasDetectors([newItem, ...gasDetectors]);
       } else if (modalMode === 'edit' && selectedDevice) {
@@ -829,8 +821,7 @@ export function DeviceManagement() {
           modelLevel: finalModelLevel,
           modelLevelName: finalModelLevelName,
           location: formFields.location || '',
-          floor: formFields.floor || '',
-          decibel: formFields.decibel || '110dB'
+          floor: formFields.floor || ''
         };
         setAlarms([newItem, ...alarms]);
       } else if (modalMode === 'edit' && selectedDevice) {
@@ -1249,15 +1240,13 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">安装位置</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">气体检测类型</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">告警阀值</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap min-w-[140px]">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                 {filteredGasDetectors.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       暂无气体探测器数据记录
                     </td>
                   </tr>
@@ -1274,8 +1263,6 @@ export function DeviceManagement() {
                         {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-800 whitespace-nowrap border-r border-slate-50">{device.location}</td>
-                      <td className="py-2.5 px-4 text-center text-amber-700 font-semibold whitespace-nowrap border-r border-slate-50">{device.gasType}</td>
-                      <td className="py-2.5 px-4 text-center font-mono text-slate-700 text-[11px] border-r border-slate-50">{device.alarmThreshold}</td>
                       <td className="py-2.5 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2.5">
                           <button onClick={() => handleOpenDetail(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">查看</button>
@@ -1301,14 +1288,13 @@ export function DeviceManagement() {
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[160px]">厂区通用/关联项目</th>
                   <th className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-100 min-w-[100px]">船型分层</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">安装位置</th>
-                  <th className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-100">报警声级 (dB)</th>
                   <th className="py-2.5 px-4 text-center whitespace-nowrap min-w-[140px]">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                 {filteredAlarms.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       暂无声光报警器数据记录
                     </td>
                   </tr>
@@ -1325,7 +1311,6 @@ export function DeviceManagement() {
                         {renderLayerCell(device)}
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-800 whitespace-nowrap border-r border-slate-50">{device.location}</td>
-                      <td className="py-2.5 px-4 text-center font-mono text-rose-600 font-bold text-[11px] border-r border-slate-50">{device.decibel || '110dB'}</td>
                       <td className="py-2.5 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2.5">
                           <button onClick={() => handleOpenDetail(device)} className="text-sky-600 hover:text-sky-800 font-medium hover:underline text-[11px] cursor-pointer">查看</button>
@@ -1869,32 +1854,12 @@ export function DeviceManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-600 font-medium mb-1">气体检测类型</label>
-                    <input
-                      type="text"
-                      value={formFields.gasType || ''}
-                      onChange={(e) => setFormFields({ ...formFields, gasType: e.target.value })}
-                      placeholder="如: 多气体四合一 (O2/CO/H2S/EX)"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-slate-600 font-medium mb-1">安装位置</label>
                     <input
                       type="text"
                       value={formFields.location || ''}
                       onChange={(e) => setFormFields({ ...formFields, location: e.target.value })}
                       placeholder="如: 517-9号船机舱"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">告警阀值</label>
-                    <input
-                      type="text"
-                      value={formFields.alarmThreshold || ''}
-                      onChange={(e) => setFormFields({ ...formFields, alarmThreshold: e.target.value })}
-                      placeholder="如: O2 < 19.5%"
                       className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
                     />
                   </div>
@@ -1922,16 +1887,6 @@ export function DeviceManagement() {
                       value={formFields.location || ''}
                       onChange={(e) => setFormFields({ ...formFields, location: e.target.value })}
                       placeholder="如: 145-3机舱"
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">报警分贝 (dB)</label>
-                    <input
-                      type="text"
-                      value={formFields.decibel || ''}
-                      onChange={(e) => setFormFields({ ...formFields, decibel: e.target.value })}
-                      placeholder="如: 110dB (高音警笛)"
                       className="w-full px-3 py-1.5 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-xs"
                     />
                   </div>
@@ -2127,8 +2082,6 @@ export function DeviceManagement() {
                 {activeTab === 'gas_detector' && (
                   <>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">安装位置：</span><span className="font-medium text-slate-800">{selectedDevice.location || '未设定'}</span></div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">气体类型：</span><span className="font-medium text-amber-700">{selectedDevice.gasType || '四合一测气'}</span></div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">告警阀值：</span><span className="font-mono text-slate-800">{selectedDevice.alarmThreshold || '标准防护'}</span></div>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">创建时间：</span><span className="font-mono text-slate-800">{selectedDevice.createdAt}</span></div>
                   </>
                 )}
@@ -2136,7 +2089,6 @@ export function DeviceManagement() {
                 {activeTab === 'alarm' && (
                   <>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">安装位置：</span><span className="font-medium text-slate-800">{selectedDevice.location || '未设定'}</span></div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">报警分贝：</span><span className="font-mono text-rose-600 font-bold">{selectedDevice.decibel || '110dB'}</span></div>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-500">创建时间：</span><span className="font-mono text-slate-800">{selectedDevice.createdAt}</span></div>
                   </>
                 )}

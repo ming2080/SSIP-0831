@@ -27,7 +27,7 @@ import {
   Boxes,
   Anchor
 } from 'lucide-react';
-import { CreateFenceModal, FenceData } from './CreateFenceModal';
+import { CreateFenceModal, FenceData, FENCE_MODEL_LAYER_OPTIONS } from './CreateFenceModal';
 
 // 导入船模背景图
 import lngModelBg from '@/src/assets/images/lng_ship_model_1787972569670.jpg';
@@ -149,6 +149,8 @@ const INITIAL_FENCES: FenceData[] = [
     projectName: '17.4万m³ 薄膜型大型LNG船',
     projectPhase: '密闭空间与绝热层铺设',
     projectSection: '1#~4#液货舱 / 密闭舱室',
+    modelLevel: 'bottom',
+    modelLevelName: '底舱层 (双层底/压载密闭舱)',
     type: '受限空间',
     color: '#06b6d4',
     shape: '多边形',
@@ -170,6 +172,8 @@ const INITIAL_FENCES: FenceData[] = [
     projectName: '17.4万m³ 薄膜型大型LNG船',
     projectPhase: '主甲板管系与电气舾装',
     projectSection: '主甲板及管架区域',
+    modelLevel: 'deck',
+    modelLevelName: '甲板层 (主甲板/露天作业区)',
     type: '危险区',
     color: '#ef4444',
     shape: '多边形',
@@ -193,6 +197,8 @@ const INITIAL_FENCES: FenceData[] = [
     projectName: '24000TEU 超大型集装箱船',
     projectPhase: '船体合拢与主结构搭载',
     projectSection: '艏楼与导轨架安装区',
+    modelLevel: 'deck',
+    modelLevelName: '甲板层 (主甲板/露天作业区)',
     type: '禁入区',
     color: '#f59e0b',
     shape: '多边形',
@@ -214,6 +220,8 @@ const INITIAL_FENCES: FenceData[] = [
     projectName: '30万吨级 超大型原油船(VLCC)',
     projectPhase: '密闭舱室涂装与动火作业',
     projectSection: '机舱双层底及泵舱区',
+    modelLevel: 'engine',
+    modelLevelName: '机舱动力区 (主机/辅机与管系舱)',
     type: '受限空间',
     color: '#ef4444',
     shape: '多边形',
@@ -237,6 +245,8 @@ const INITIAL_FENCES: FenceData[] = [
     projectName: '8.2万吨 卡姆萨尔型散货船',
     projectPhase: '分段制作与预装配',
     projectSection: '全船通用作业面',
+    modelLevel: 'middle',
+    modelLevelName: '中舱层 (货舱上部/中层平台)',
     type: '吊装警戒区',
     color: '#d946ef',
     shape: '多边形',
@@ -302,6 +312,10 @@ export function ElectronicFence() {
   // 当前选中的造船项目ID (默认第一个造船项目)
   const [selectedProjectId, setSelectedProjectId] = useState<string>(SHIP_PROJECTS[0].id);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  
+  // 🎯 造船项目二级分层选择状态 ('all' | 'deck' | 'middle' | 'bottom' | 'engine' | 'bridge')
+  const [selectedModelLevel, setSelectedModelLevel] = useState<string>('all');
+  const [isLayerDropdownOpen, setIsLayerDropdownOpen] = useState(false);
 
   const [fences, setFences] = useState<FenceData[]>(INITIAL_FENCES);
   const [selectedFenceId, setSelectedFenceId] = useState<string | null>(null);
@@ -322,23 +336,27 @@ export function ElectronicFence() {
     ? (PROJECTS_CONFIG.find(p => p.id === 'yard') || PROJECTS_CONFIG[0])
     : (PROJECTS_CONFIG.find(p => p.id === selectedProjectId) || SHIP_PROJECTS[0]);
 
-  // 当前视图对应的围栏列表 (如果在厂区视图则展示所有厂区围栏，如果在项目视图则展示该造船项目专属围栏)
+  // 当前视图对应的围栏列表 (如果在厂区视图则展示所有厂区围栏，如果在项目视图则展示该造船项目及其分层专属围栏)
   const currentViewFences = fences.filter(f => {
     if (mapViewMode === 'yard') {
       return f.scopeType === 'yard' || !f.projectId || f.projectId === 'yard';
     }
-    return f.projectId === currentProject.id || (f.scopeType === 'project' && f.projectId === currentProject.id);
+    const matchesProject = f.projectId === currentProject.id || (f.scopeType === 'project' && f.projectId === currentProject.id);
+    const matchesLayer = selectedModelLevel === 'all' || !f.modelLevel || f.modelLevel === selectedModelLevel;
+    return matchesProject && matchesLayer;
   });
 
-  // 过滤后的列表 (结合搜索、归属范围与类型)
+  // 过滤后的列表 (结合搜索、归属范围、类型与分层)
   const filteredFences = fences.filter(f => {
     const matchesSearch = f.name.toLowerCase().includes(searchKeyword.toLowerCase()) || 
                           f.code.toLowerCase().includes(searchKeyword.toLowerCase()) ||
                           (f.projectName && f.projectName.toLowerCase().includes(searchKeyword.toLowerCase())) ||
-                          (f.projectPhase && f.projectPhase.toLowerCase().includes(searchKeyword.toLowerCase()));
+                          (f.projectPhase && f.projectPhase.toLowerCase().includes(searchKeyword.toLowerCase())) ||
+                          (f.modelLevelName && f.modelLevelName.toLowerCase().includes(searchKeyword.toLowerCase()));
     const matchesScope = scopeFilter === 'all' || f.scopeType === scopeFilter;
     const matchesType = typeFilter === 'all' || f.type === typeFilter;
-    return matchesSearch && matchesScope && matchesType;
+    const matchesLayer = selectedModelLevel === 'all' || scopeFilter === 'yard' || !f.modelLevel || f.modelLevel === selectedModelLevel;
+    return matchesSearch && matchesScope && matchesType && matchesLayer;
   });
 
   // 选中的围栏对象
@@ -611,16 +629,24 @@ export function ElectronicFence() {
                     </div>
 
                     {/* 归属详情标注 */}
-                    <div className="text-[11px] text-slate-600 flex items-center gap-1 truncate">
+                    <div className="text-[11px] text-slate-600 flex items-center gap-1 truncate flex-wrap">
                       {fence.scopeType === 'yard' ? (
                         <span className="text-slate-500 truncate">
                           区域: <strong className="text-slate-700 font-medium">{fence.yardArea || '全厂公共区域'}</strong>
                         </span>
                       ) : (
-                        <span className="text-slate-500 truncate">
-                          项目: <strong className="text-blue-700 font-medium">{fence.projectName}</strong>
-                          {fence.projectPhase && <span className="text-slate-400 font-normal ml-1">· {fence.projectPhase}</span>}
-                        </span>
+                        <div className="flex items-center gap-1 truncate flex-wrap">
+                          <span className="text-slate-500 truncate">
+                            项目: <strong className="text-blue-700 font-medium">{fence.projectName}</strong>
+                          </span>
+                          {fence.modelLevelName && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] font-medium shrink-0">
+                              <Layers className="w-2.5 h-2.5 text-cyan-600" />
+                              <span>{fence.modelLevelName.split(' ')[0]}</span>
+                            </span>
+                          )}
+                          {fence.projectPhase && <span className="text-slate-400 font-normal">· {fence.projectPhase}</span>}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -714,69 +740,150 @@ export function ElectronicFence() {
               </button>
             </div>
 
-            {/* 🎯 当处于“造船项目”视图时，才展示造船项目专属选择下拉胶囊 (参考驾驶舱图1，默认选第一个项目) */}
+            {/* 🎯 当处于“造船项目”视图时，展示一级造船项目选择胶囊与二级模型分层选择胶囊 */}
             {mapViewMode === 'project' && (
-              <div className="relative animate-in fade-in zoom-in-95 duration-200">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsProjectDropdownOpen(!isProjectDropdownOpen);
-                  }}
-                  className="flex items-center gap-2 bg-[#0a264a]/90 hover:bg-[#0f3466] border border-[#00d2ff]/80 px-3.5 py-1 rounded-full text-xs text-[#e2f1ff] shadow-[0_0_14px_rgba(0,210,255,0.35)] transition-all duration-200 cursor-pointer backdrop-blur-md"
-                >
-                  <Anchor className="w-3.5 h-3.5 text-[#00d2ff]" />
-                  <span className="font-bold text-[#00d2ff]">{currentProject.name}</span>
-                  <span className="text-[10px] bg-blue-500/20 text-[#8ab4f8] px-1.5 py-0.5 rounded border border-blue-400/30">
-                    {currentProject.phase}
-                  </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#00d2ff] transition-transform duration-200 ${isProjectDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* 科技感项目下拉弹窗 */}
-                {isProjectDropdownOpen && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-full mt-2 left-0 w-80 bg-[#061833]/98 border border-[#00d2ff] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_20px_rgba(0,210,255,0.4)] backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+              <>
+                {/* 1. 一级：造船项目选择器 */}
+                <div className="relative animate-in fade-in zoom-in-95 duration-200">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsProjectDropdownOpen(!isProjectDropdownOpen);
+                      setIsLayerDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 bg-[#0a264a]/90 hover:bg-[#0f3466] border border-[#00d2ff]/80 px-3.5 py-1 rounded-full text-xs text-[#e2f1ff] shadow-[0_0_14px_rgba(0,210,255,0.35)] transition-all duration-200 cursor-pointer backdrop-blur-md"
                   >
-                    <div className="text-[10px] font-bold text-[#8ab4f8] px-2.5 py-1 border-b border-blue-900/60 mb-1 flex items-center justify-between">
-                      <span>选择在建造船项目模型</span>
-                      <span className="font-mono text-cyan-400">共 {SHIP_PROJECTS.length} 个项目</span>
-                    </div>
-                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-                      {SHIP_PROJECTS.map((proj) => {
-                        const isCurrentActive = proj.id === currentProject.id;
-                        return (
-                          <div
-                            key={proj.id}
-                            onClick={() => {
-                              setSelectedProjectId(proj.id);
-                              setIsProjectDropdownOpen(false);
-                              setSelectedFenceId(null);
-                            }}
-                            className={`p-2 rounded-xl cursor-pointer transition-all border ${
-                              isCurrentActive
-                                ? 'bg-blue-600/30 border-[#00d2ff] text-white shadow-sm'
-                                : 'bg-[#0a264a]/60 border-transparent text-slate-300 hover:bg-[#0f3466] hover:text-white'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1 mb-0.5">
-                              <span className="font-bold text-xs text-[#00d2ff] truncate">{proj.name}</span>
-                              <span className="text-[9px] bg-blue-500/20 text-[#8ab4f8] px-1.5 py-0.2 rounded border border-blue-400/30">
-                                {proj.phase}
-                              </span>
+                    <Anchor className="w-3.5 h-3.5 text-[#00d2ff]" />
+                    <span className="font-bold text-[#00d2ff]">{currentProject.name}</span>
+                    <span className="text-[10px] bg-blue-500/20 text-[#8ab4f8] px-1.5 py-0.5 rounded border border-blue-400/30">
+                      {currentProject.phase}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-[#00d2ff] transition-transform duration-200 ${isProjectDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* 科技感项目下拉弹窗 */}
+                  {isProjectDropdownOpen && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-full mt-2 left-0 w-80 bg-[#061833]/98 border border-[#00d2ff] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_20px_rgba(0,210,255,0.4)] backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    >
+                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2.5 py-1 border-b border-blue-900/60 mb-1 flex items-center justify-between">
+                        <span>选择在建造船项目模型</span>
+                        <span className="font-mono text-cyan-400">共 {SHIP_PROJECTS.length} 个项目</span>
+                      </div>
+                      <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                        {SHIP_PROJECTS.map((proj) => {
+                          const isCurrentActive = proj.id === currentProject.id;
+                          return (
+                            <div
+                              key={proj.id}
+                              onClick={() => {
+                                setSelectedProjectId(proj.id);
+                                setIsProjectDropdownOpen(false);
+                                setSelectedFenceId(null);
+                              }}
+                              className={`p-2 rounded-xl cursor-pointer transition-all border ${
+                                isCurrentActive
+                                  ? 'bg-blue-600/30 border-[#00d2ff] text-white shadow-sm'
+                                  : 'bg-[#0a264a]/60 border-transparent text-slate-300 hover:bg-[#0f3466] hover:text-white'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className="font-bold text-xs text-[#00d2ff] truncate">{proj.name}</span>
+                                <span className="text-[9px] bg-blue-500/20 text-[#8ab4f8] px-1.5 py-0.2 rounded border border-blue-400/30">
+                                  {proj.phase}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>编号: {proj.code} · {proj.shipType}</span>
+                                <span className="font-mono text-emerald-400">进度: {proj.progress}%</span>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-slate-400">
-                              <span>编号: {proj.code} · {proj.shipType}</span>
-                              <span className="font-mono text-emerald-400">进度: {proj.progress}%</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+
+                {/* 2. 二级：造船项目 3D BIM 模型分层选择器胶囊 */}
+                <div className="relative animate-in fade-in zoom-in-95 duration-200">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsLayerDropdownOpen(!isLayerDropdownOpen);
+                      setIsProjectDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 bg-[#0a264a]/90 hover:bg-[#0f3466] border border-cyan-400/70 px-3 py-1 rounded-full text-xs text-[#e2f1ff] shadow-[0_0_12px_rgba(0,229,255,0.25)] transition-all duration-200 cursor-pointer backdrop-blur-md"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-[#8ab4f8]">模型分层:</span>
+                    <span className="font-bold text-cyan-300">
+                      {selectedModelLevel === 'all' 
+                        ? '全部分层' 
+                        : FENCE_MODEL_LAYER_OPTIONS.find(l => l.id === selectedModelLevel)?.name || '全部分层'}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${isLayerDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* 分层下拉选择框 */}
+                  {isLayerDropdownOpen && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-full mt-2 left-0 w-64 bg-[#061833]/98 border border-cyan-400/80 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_20px_rgba(0,229,255,0.3)] backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    >
+                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2 py-1 border-b border-blue-900/60 mb-1 flex items-center justify-between">
+                        <span>造船项目 BIM 二级模型分层</span>
+                        <span className="text-cyan-400">3D空间围栏</span>
+                      </div>
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedModelLevel('all');
+                            setIsLayerDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                            selectedModelLevel === 'all'
+                              ? 'bg-blue-600/40 border border-cyan-400 text-white font-bold'
+                              : 'text-slate-300 hover:bg-[#0f3466] hover:text-white'
+                          }`}
+                        >
+                          <span>🌐 全部模型分层</span>
+                          {selectedModelLevel === 'all' && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                        </button>
+
+                        {FENCE_MODEL_LAYER_OPTIONS.map((layer) => {
+                          const isSelected = selectedModelLevel === layer.id;
+                          return (
+                            <button
+                              key={layer.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedModelLevel(layer.id);
+                                setIsLayerDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? 'bg-blue-600/40 border border-cyan-400 text-white font-bold'
+                                  : 'text-slate-300 hover:bg-[#0f3466] hover:text-white'
+                              }`}
+                            >
+                              <div>
+                                <span className="font-bold text-cyan-300 mr-1.5">[{layer.name}]</span>
+                                <span className="text-[11px] text-slate-400">{layer.fullName.split(' ')[1] || ''}</span>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {/* 统计提示胶囊 */}
@@ -1041,6 +1148,12 @@ export function ElectronicFence() {
                         <span className="text-slate-400">关联船舶工程：</span>
                         <span className="text-blue-300 font-medium">{activeFence.projectName}</span>
                       </div>
+                      {activeFence.modelLevelName && (
+                        <div>
+                          <span className="text-slate-400">船型 3D BIM 分层：</span>
+                          <span className="text-cyan-300 font-bold">{activeFence.modelLevelName}</span>
+                        </div>
+                      )}
                       {activeFence.projectPhase && (
                         <div>
                           <span className="text-slate-400">关联施工阶段：</span>
