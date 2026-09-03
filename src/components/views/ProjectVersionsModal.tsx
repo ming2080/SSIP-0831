@@ -349,6 +349,10 @@ export function ProjectVersionsModal({
                           <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             已竣工交付离厂
                           </span>
+                        ) : version.projectStatus === 'temporary_departure' || version.berthName?.includes('临时离港') ? (
+                          <span className="font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 inline-flex items-center gap-1">
+                            🚢 临时离港 (厂区停泊位已自动释放)
+                          </span>
                         ) : (
                           <>
                             <span className="font-bold text-slate-800">

@@ -464,6 +464,9 @@ export function DeviceManagement() {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
   const [mapViewDevice, setMapViewDevice] = useState<any | null>(null);
 
+  // 表单校验与提示状态
+  const [formError, setFormError] = useState<string | null>(null);
+
   // 表单临时编辑状态
   const [formFields, setFormFields] = useState<Record<string, any>>({});
 
@@ -566,6 +569,7 @@ export function DeviceManagement() {
 
   // 打开新增模态框
   const handleOpenCreate = () => {
+    setFormError(null);
     const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const defaultAssociation = 'project';
     const defaultProjId = MOCK_PROJECTS[0].id;
@@ -658,6 +662,7 @@ export function DeviceManagement() {
 
   // 打开编辑模态框
   const handleOpenEdit = (item: any) => {
+    setFormError(null);
     setSelectedDevice(item);
     const isGlobal = item.associationType === 'global' || item.project === '全厂通用设备';
     const targetPrjId = item.projectId || (MOCK_PROJECTS.find(p => p.name === item.project)?.id || MOCK_PROJECTS[0].id);
@@ -698,6 +703,19 @@ export function DeviceManagement() {
   // 保存新增或修改
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    // 校验三维坐标是否为空 (当变更关联造船工程项目或船型分层时坐标会被清空为 null，若未重新在地图上采集则做为空判断)
+    const isCoordsEmpty = 
+      formFields.positionX === null || formFields.positionX === undefined || formFields.positionX === '' ||
+      formFields.positionY === null || formFields.positionY === undefined || formFields.positionY === '' ||
+      formFields.positionZ === null || formFields.positionZ === undefined || formFields.positionZ === '' ||
+      isNaN(Number(formFields.positionX)) || isNaN(Number(formFields.positionY)) || isNaN(Number(formFields.positionZ));
+
+    if (isCoordsEmpty) {
+      setFormError('⚠️ 关联造船工程项目或船型分层变更后坐标已清空，需要重新采集坐标信息！请点击“地图添加/更新坐标”在地图上进行定位采集。');
+      return;
+    }
     
     // 计算最终关联模式与造船项目
     const assocType = formFields.associationType || (formFields.project === '全厂通用设备' ? 'global' : 'project');
@@ -1444,7 +1462,20 @@ export function DeviceManagement() {
                       type="radio"
                       name="associationType"
                       checked={formFields.associationType === 'global'}
-                      onChange={() => setFormFields({ ...formFields, associationType: 'global', projectId: '', project: '全厂通用设备' })}
+                      onChange={() => {
+                        setFormFields({ 
+                          ...formFields, 
+                          associationType: 'global', 
+                          projectId: '', 
+                          project: '全厂通用设备',
+                          modelLevel: 'all',
+                          modelLevelName: '全厂公共区域',
+                          positionX: null,
+                          positionY: null,
+                          positionZ: null
+                        });
+                        setFormError(null);
+                      }}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-xs font-semibold text-purple-700">🏢 全厂通用设备（不绑定特定船卡项目）</span>
@@ -1454,14 +1485,20 @@ export function DeviceManagement() {
                       type="radio"
                       name="associationType"
                       checked={formFields.associationType === 'project'}
-                      onChange={() => setFormFields({ 
-                        ...formFields, 
-                        associationType: 'project', 
-                        projectId: MOCK_PROJECTS[0].id, 
-                        project: MOCK_PROJECTS[0].name,
-                        modelLevel: formFields.modelLevel || 'deck',
-                        modelLevelName: formFields.modelLevelName || MODEL_LAYER_OPTIONS[0].fullName
-                      })}
+                      onChange={() => {
+                        setFormFields({ 
+                          ...formFields, 
+                          associationType: 'project', 
+                          projectId: MOCK_PROJECTS[0].id, 
+                          project: MOCK_PROJECTS[0].name,
+                          modelLevel: formFields.modelLevel || 'deck',
+                          modelLevelName: formFields.modelLevelName || MODEL_LAYER_OPTIONS[0].fullName,
+                          positionX: null,
+                          positionY: null,
+                          positionZ: null
+                        });
+                        setFormError(null);
+                      }}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-xs font-semibold text-sky-700">🚢 关联造船工程项目与船型分层</span>
@@ -1493,8 +1530,12 @@ export function DeviceManagement() {
                             setFormFields({
                               ...formFields,
                               projectId: selectedPrj.id,
-                              project: selectedPrj.name
+                              project: selectedPrj.name,
+                              positionX: null,
+                              positionY: null,
+                              positionZ: null
                             });
+                            setFormError(null);
                           }
                         }}
                         className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-blue-500 bg-white font-sans cursor-pointer shadow-2xs"
@@ -1519,8 +1560,12 @@ export function DeviceManagement() {
                           setFormFields({
                             ...formFields,
                             modelLevel: e.target.value,
-                            modelLevelName: layerOpt ? layerOpt.fullName : ''
+                            modelLevelName: layerOpt ? layerOpt.fullName : '',
+                            positionX: null,
+                            positionY: null,
+                            positionZ: null
                           });
+                          setFormError(null);
                         }}
                         className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-blue-500 bg-white font-sans cursor-pointer shadow-2xs"
                       >
@@ -1738,7 +1783,7 @@ export function DeviceManagement() {
 
                   {/* 12. 可视化定位设备的安装位置 (X, Y, Z 轴) 及地图拾取按钮 */}
                   <div className="p-3 bg-gradient-to-br from-slate-900 to-cyan-950 rounded-xl text-white border border-cyan-800/80 shadow-md space-y-2">
-                    <div className="flex items-center justify-start">
+                    <div className="flex items-center justify-between">
                       {/* 可视化地图拾取触发按钮 (置于左侧) */}
                       <button
                         type="button"
@@ -1748,6 +1793,12 @@ export function DeviceManagement() {
                         <MapPin className="w-3.5 h-3.5 text-cyan-200" />
                         <span>🗺️ 点击地图添加/更新坐标</span>
                       </button>
+                      {(formFields.positionX === null || formFields.positionX === undefined) && (
+                        <span className="text-amber-400 font-semibold text-[11px] animate-pulse flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>关联项目/分层变更，请重新在地图采集坐标</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-xs font-mono">
@@ -1756,11 +1807,14 @@ export function DeviceManagement() {
                         <input
                           type="number"
                           step="0.01"
-                          required
-                          value={formFields.positionX ?? 407.49}
-                          onChange={(e) => setFormFields({ ...formFields, positionX: Number(e.target.value) })}
-                          placeholder="407.49"
-                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                          value={formFields.positionX ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : Number(e.target.value);
+                            setFormFields({ ...formFields, positionX: val });
+                            if (val !== null) setFormError(null);
+                          }}
+                          placeholder="未采集"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400 placeholder:text-slate-600"
                         />
                       </div>
 
@@ -1769,11 +1823,14 @@ export function DeviceManagement() {
                         <input
                           type="number"
                           step="0.01"
-                          required
-                          value={formFields.positionY ?? 0.02}
-                          onChange={(e) => setFormFields({ ...formFields, positionY: Number(e.target.value) })}
-                          placeholder="0.02"
-                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                          value={formFields.positionY ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : Number(e.target.value);
+                            setFormFields({ ...formFields, positionY: val });
+                            if (val !== null) setFormError(null);
+                          }}
+                          placeholder="未采集"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400 placeholder:text-slate-600"
                         />
                       </div>
 
@@ -1782,11 +1839,14 @@ export function DeviceManagement() {
                         <input
                           type="number"
                           step="0.01"
-                          required
-                          value={formFields.positionZ ?? -296.85}
-                          onChange={(e) => setFormFields({ ...formFields, positionZ: Number(e.target.value) })}
-                          placeholder="-296.85"
-                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                          value={formFields.positionZ ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : Number(e.target.value);
+                            setFormFields({ ...formFields, positionZ: val });
+                            if (val !== null) setFormError(null);
+                          }}
+                          placeholder="未采集"
+                          className="w-full px-2 py-1 bg-slate-950 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400 placeholder:text-slate-600"
                         />
                       </div>
                     </div>
@@ -1926,10 +1986,29 @@ export function DeviceManagement() {
                 </div>
               )}
 
+              {formError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-medium">{formError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen(true)}
+                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-[11px] shrink-0 transition-colors shadow-2xs"
+                  >
+                    立即在地图采集坐标
+                  </button>
+                </div>
+              )}
+
               <div className="pt-3 border-t border-slate-200 flex justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setModalMode(null)}
+                  onClick={() => {
+                    setModalMode(null);
+                    setFormError(null);
+                  }}
                   className="px-4 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-medium cursor-pointer"
                 >
                   取消
@@ -2544,47 +2623,136 @@ export function DeviceManagement() {
 
             {/* 主界面：双栏，左侧全景地图视角，右侧详细参数弹窗卡片 */}
             <div className="flex-1 flex overflow-hidden">
-              {/* 左侧：可视化 3D/2D 地图窗口 */}
-              <div className="flex-1 relative bg-slate-950 border-r border-slate-800 overflow-hidden flex items-center justify-center">
-                {/* 3D 网格与透视效果 */}
-                <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
+              {/* 左侧：可视化 3D/2D 地图窗口 (与编辑/新增点位采集地图视角完全同步) */}
+              <div className="flex-1 relative bg-slate-950 border-r border-slate-800 overflow-hidden flex items-center justify-center select-none">
+                {/* 3D 网格透视底纹 */}
+                <div className="absolute inset-0 bg-[radial-gradient(#0284c7_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
 
-                <div className="absolute inset-12 border border-sky-500/20 rounded-3xl pointer-events-none flex items-center justify-center">
-                  <div className="text-center space-y-2 opacity-30">
-                    <Ship className="w-24 h-24 text-sky-400 mx-auto" />
-                    <p className="text-sm font-mono text-sky-300">[{mapViewDevice.project || '全厂通用设备'}] 全局数字孪生视窗</p>
+                {/* 视角与场景类型标识卡片 */}
+                <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+                  <div className="bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-sky-500/40 text-xs font-mono text-cyan-300 shadow-xl flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>🌐 绑定场景: <strong className="text-white">{mapViewDevice.project || '全厂通用设备'}</strong></span>
+                    <span className="text-slate-600">|</span>
+                    <span>模型分层: <strong className="text-amber-300">{mapViewDevice.modelLevelName || '全厂公共区域'}</strong></span>
                   </div>
                 </div>
 
-                {/* 设备定位在地图上的高亮点与坐标弹窗 */}
-                <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-300">
-                  {/* 波纹底盘 */}
-                  <div className="w-24 h-24 rounded-full border-2 border-sky-400/40 bg-sky-500/10 animate-ping absolute -top-8"></div>
-                  
-                  {/* 设备图标 */}
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-400 border-2 border-white flex items-center justify-center shadow-[0_0_25px_#38bdf8] text-white">
-                    <Radio className="w-6 h-6 animate-pulse" />
-                  </div>
+                {/* 背景场景图 1: 全厂通用模式 -> 船厂全景平面图 */}
+                {(mapViewDevice.associationType === 'global' || mapViewDevice.project === '全厂通用设备') ? (
+                  <div className="relative w-[780px] h-[480px] border-2 border-purple-500/40 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950/20 to-slate-950 overflow-hidden shadow-2xl p-4 flex flex-col justify-between">
+                    {/* 厂区地图头部标语 */}
+                    <div className="flex justify-between items-center border-b border-purple-500/30 pb-2">
+                      <div className="flex items-center gap-2 text-purple-300 font-bold text-xs">
+                        <Building2 className="w-4 h-4 text-purple-400" />
+                        <span>🏢 东南造船厂 - 厂区全景平面图 (全厂公共区域)</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-purple-400/80">SCALE: 1:2000 | AREA: 1.2 km²</span>
+                    </div>
 
-                  {/* 悬浮坐标说明弹窗卡片 */}
-                  <div className="mt-3 bg-slate-900/95 border border-sky-500/50 rounded-xl p-3 shadow-2xl text-xs space-y-1 min-w-[220px]">
-                    <div className="flex justify-between items-center text-cyan-300 font-bold border-b border-slate-800 pb-1">
-                      <span>{mapViewDevice.code || mapViewDevice.sn || mapViewDevice.id}</span>
-                      <span className="text-[10px] text-emerald-400">定位精度: ±2cm</span>
+                    {/* 厂区各功能区域简图 */}
+                    <div className="grid grid-cols-3 gap-3 flex-1 my-3 text-[11px] font-mono">
+                      <div className="bg-purple-900/10 border border-purple-500/20 rounded-lg p-2.5 flex flex-col justify-between text-purple-300/80">
+                        <span className="font-bold text-purple-300">1# ~ 4# 舾装码头区 (海域)</span>
+                        <div className="space-y-1 text-[10px] text-slate-400">
+                          <div>· 停泊船只: 517-9号 / 145-3号</div>
+                          <div>· 门座起重机 #1 ~ #4</div>
+                        </div>
+                      </div>
+                      <div className="bg-sky-900/10 border border-sky-500/20 rounded-lg p-2.5 flex flex-col justify-between text-sky-300/80">
+                        <span className="font-bold text-sky-300">1号/2号 船坞总装区 (Dry Dock)</span>
+                        <div className="space-y-1 text-[10px] text-slate-400">
+                          <div>· 龙门吊 (600T) 轨道覆盖</div>
+                          <div>· 坞门泵房控制中心</div>
+                        </div>
+                      </div>
+                      <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-2.5 flex flex-col justify-between text-emerald-300/80">
+                        <span className="font-bold text-emerald-300">制造加工与涂装车间群</span>
+                        <div className="space-y-1 text-[10px] text-slate-400">
+                          <div>· 钢材切割加工厂</div>
+                          <div>· 自动化喷砂涂装车间</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-slate-300 font-mono text-[11px] pt-1">
-                      <div>X: <span className="text-white font-bold">{mapViewDevice.positionX ?? 407.49}</span></div>
-                      <div>Y: <span className="text-white font-bold">{mapViewDevice.positionY ?? 0.02}</span></div>
-                      <div>Z: <span className="text-white font-bold">{mapViewDevice.positionZ ?? -296.85}</span></div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-purple-500/30 pt-2">
+                      <span className="flex items-center gap-1 text-purple-300">
+                        <MapPin className="w-3.5 h-3.5" />
+                        厂区平面图：展示全厂通用设备绝对位置标记
+                      </span>
+                      <span className="font-mono text-slate-500">SE SOUTHEAST SHIPYARD MAIN MAP</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
-                      安装地点: {mapViewDevice.location || mapViewDevice.installationSite || '测试区域'}
+                  </div>
+                ) : (
+                  /* 背景场景图 2: 造船项目模式 -> 3D CAD 船模型图 */
+                  <div className="relative w-[820px] h-[480px] border-2 border-sky-500/40 rounded-2xl bg-gradient-to-br from-slate-900 via-sky-950/30 to-slate-950 overflow-hidden shadow-2xl p-4 flex flex-col justify-between">
+                    {/* 船体 CAD 模型头部 */}
+                    <div className="flex justify-between items-center border-b border-sky-500/30 pb-2">
+                      <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
+                        <Ship className="w-4 h-4 text-cyan-400" />
+                        <span>🚢 3D CAD 数字孪生船型模型 — {mapViewDevice.project || MOCK_PROJECTS[0].name}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-mono border border-sky-500/40">
+                        当前分层: {mapViewDevice.modelLevelName || '甲板层'}
+                      </span>
+                    </div>
+
+                    {/* 船型侧视三维网格骨架 */}
+                    <div className="relative flex-1 my-3 border border-sky-500/20 rounded-xl bg-slate-950/60 p-3 flex flex-col justify-between overflow-hidden">
+                      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0284c715_1px,transparent_1px),linear-gradient(to_bottom,#0284c715_1px,transparent_1px)] bg-[size:28px_28px]"></div>
+
+                      {/* 船头/船尾/舱室 结构分布 */}
+                      <div className="relative z-10 flex justify-between items-center h-full text-[10px] font-mono">
+                        <div className="w-24 h-full border-r border-dashed border-sky-500/30 p-2 flex flex-col justify-between bg-sky-500/5 text-sky-400">
+                          <span className="font-bold">球鼻艏 (Bow)</span>
+                          <span className="text-slate-500">#240 肋骨</span>
+                        </div>
+                        <div className="flex-1 h-full px-4 flex justify-between items-center text-slate-400">
+                          <div className="border-r border-sky-500/20 h-full flex flex-col justify-center px-2">1# 货舱 (HOLD 01)</div>
+                          <div className="border-r border-sky-500/20 h-full flex flex-col justify-center px-2">2# 货舱 (HOLD 02)</div>
+                          <div className="border-r border-sky-500/20 h-full flex flex-col justify-center px-2">3# 货舱 (HOLD 03)</div>
+                          <div className="border-r border-sky-500/20 h-full flex flex-col justify-center px-2">4# 货舱 (HOLD 04)</div>
+                        </div>
+                        <div className="w-28 h-full border-l border-dashed border-sky-500/30 p-2 flex flex-col justify-between bg-sky-500/5 text-sky-400">
+                          <span className="font-bold">上层建筑/机舱</span>
+                          <span className="text-slate-500">#0 艉柱 (Stern)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800 pt-2">
+                      <span className="flex items-center gap-1 text-cyan-400">
+                        <MapPin className="w-3.5 h-3.5" />
+                        船模型视角：实时全景展示设备具体安装三维绝对坐标
+                      </span>
+                      <span className="font-mono text-slate-500">LOA: 335m | Beam: 51m | Depth: 30m</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 坐标定位指针标记 */}
+                <div 
+                  className="absolute z-30 transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{
+                    left: `calc(50% + ${(mapViewDevice.positionX ?? 407.49) / 1.5}px)`,
+                    top: `calc(50% + ${(mapViewDevice.positionZ ?? -296.85) / 1.5}px)`
+                  }}
+                >
+                  <div className="relative flex flex-col items-center animate-in zoom-in duration-300">
+                    <div className="w-12 h-12 rounded-full bg-cyan-500/30 border-2 border-cyan-400 animate-ping absolute -inset-1"></div>
+                    <div className="w-9 h-9 rounded-full bg-cyan-500 border-2 border-white flex items-center justify-center shadow-[0_0_25px_#06b6d4]">
+                      <MapPin className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="mt-1.5 bg-slate-900/95 text-cyan-300 border border-cyan-500/80 text-xs font-mono font-bold px-3 py-1 rounded-lg shadow-2xl whitespace-nowrap flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>X: {mapViewDevice.positionX ?? 407.49}, Y: {mapViewDevice.positionY ?? 0.02}, Z: {mapViewDevice.positionZ ?? -296.85}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-cyan-300">
-                  🌐 关联项目: {mapViewDevice.project || '全厂通用'} | 绑定分层: {mapViewDevice.modelLevelName || '甲板层'}
+                <div className="absolute bottom-4 left-6 bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono shadow-xl pointer-events-none flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>🌐 物理视角已与编辑地图采集点位视角完全同步 | 绝对空间坐标展示</span>
                 </div>
               </div>
 

@@ -13,7 +13,8 @@ import {
   Search,
   UserCheck,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  Anchor
 } from 'lucide-react';
 import { BerthPicker } from './BerthPicker';
 import { 
@@ -39,6 +40,7 @@ export const CONSTRUCTION_PHASE_PRESETS = [
 export const PROJECT_STATUS_OPTIONS = [
   { value: 'planning', label: '前期规划中', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
   { value: 'in_progress', label: '施工进行中', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { value: 'temporary_departure', label: '临时离港', badgeBg: 'bg-sky-50 text-sky-700 border-sky-200' },
   { value: 'completed', label: '已竣工交船', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
   { value: 'suspended', label: '暂停施工', badgeBg: 'bg-rose-50 text-rose-700 border-rose-200' }
 ] as const;
@@ -249,10 +251,12 @@ export function CreateVersionModal({
       return;
     }
 
-    // 当选择“已竣工交船”时，不需要校验所选停泊位
+    // 当选择“已竣工交船”或“临时离港”时，不需要校验所选停泊位，并且停泊位将被自动释放
     const isCompletedStatus = projectStatus === 'completed';
+    const isTemporaryDeparture = projectStatus === 'temporary_departure';
+    const isNoBerthRequired = isCompletedStatus || isTemporaryDeparture;
 
-    if (!isCompletedStatus) {
+    if (!isNoBerthRequired) {
       // 校验所选泊位：需考虑是否有其他轮船占用和船型是否符合
       if (!selectedSlotNumber) {
         setErrorMsg('请在厂区停泊位中选择一个空闲且船型匹配的二级具体泊位');
@@ -291,12 +295,20 @@ export function CreateVersionModal({
       hasAssociatedData,
       associatedPersonnelIds: isCompletedStatus ? [] : selectedPersonnelIds,
       associatedPersonnelCount: isCompletedStatus ? 0 : selectedPersonnelIds.length,
-      enableBerthTransfer: !isCompletedStatus,
-      berthId: isCompletedStatus ? undefined : selectedBerth.id,
-      berthCode: isCompletedStatus ? undefined : selectedBerth.code,
-      berthName: isCompletedStatus ? '已竣工交付离厂' : selectedBerth.name,
-      berthSlotNumber: isCompletedStatus ? undefined : (selectedSlotNumber || undefined),
-      berthCategoryName: isCompletedStatus ? '已自动解绑' : selectedBerth.categoryName
+      enableBerthTransfer: !isNoBerthRequired,
+      berthId: isNoBerthRequired ? undefined : selectedBerth.id,
+      berthCode: isNoBerthRequired ? undefined : selectedBerth.code,
+      berthName: isCompletedStatus 
+        ? '已竣工交付离厂' 
+        : isTemporaryDeparture 
+          ? '临时离港 (停泊位已自动释放)' 
+          : selectedBerth.name,
+      berthSlotNumber: isNoBerthRequired ? undefined : (selectedSlotNumber || undefined),
+      berthCategoryName: isCompletedStatus 
+        ? '已自动解绑' 
+        : isTemporaryDeparture 
+          ? '停泊位已释放' 
+          : selectedBerth.categoryName
     };
 
     onSave(savedPayload);
@@ -495,6 +507,19 @@ export function CreateVersionModal({
                   </p>
                 </div>
               </div>
+            ) : projectStatus === 'temporary_departure' ? (
+              <div className="p-3 bg-sky-50 border border-sky-200/90 rounded-xl text-xs text-sky-900 flex items-start gap-2.5 animate-fadeIn">
+                <Anchor className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                <div className="space-y-1.5 leading-relaxed w-full">
+                  <strong className="block text-sky-950 font-bold text-xs flex items-center gap-1.5">
+                    <span>临时离港说明：</span>
+                    <span className="bg-sky-200/80 text-sky-900 px-2 py-0.5 rounded text-[10px] font-bold">厂区停泊位已自动释放</span>
+                  </strong>
+                  <p className="text-xs text-sky-800 font-medium leading-relaxed">
+                    当前阶段选择【临时离港】状态（如出海试航、避风或临时调离），本项目原占用的厂区停泊位已自动释放并空出，供厂区其他船舶调度停靠使用。
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-xl text-[11px] text-blue-900 flex items-center gap-2">
                 <Info className="w-4 h-4 text-blue-600 shrink-0" />
@@ -654,49 +679,66 @@ export function CreateVersionModal({
               </div>
 
               {/* 3. 🎯 核心移泊规划：轮船模型移泊至厂区新停泊位 */}
-              <div className="bg-gradient-to-br from-blue-50/50 via-slate-50 to-indigo-50/30 p-4 rounded-2xl border border-blue-200 space-y-4">
-                
-                {/* 标题 */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              {projectStatus === 'temporary_departure' ? (
+                <div className="bg-gradient-to-br from-sky-50 via-slate-50 to-blue-50/50 p-4 rounded-2xl border border-sky-200 space-y-2.5 animate-fadeIn">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">3</span>
-                    <div>
-                      <h3 className="text-slate-900 font-bold text-sm flex items-center gap-2">
-                        <span>船厂厂区停泊场景与移泊规划</span>
-                        <span className="text-xs font-normal text-cyan-700 bg-cyan-100/70 border border-cyan-200 px-2 py-0.5 rounded-full">
-                          占用状态与船型匹配校验
-                        </span>
-                      </h3>
-                    </div>
+                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">3</span>
+                    <h3 className="text-slate-900 font-bold text-sm flex items-center gap-2">
+                      <span>厂区停泊位自动释放</span>
+                      <span className="text-xs font-semibold text-sky-800 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-full">
+                        无需占用厂区泊位
+                      </span>
+                    </h3>
                   </div>
+                  <p className="text-xs text-slate-600 leading-relaxed pl-7">
+                    当前阶段设定为【临时离港】状态（如出海试航、避风或临时出厂），系统已自动将之前占用的厂区停泊位解绑并释放为空闲状态供其他船舶调度停靠。在下一阶段重新选择厂区施工状态时可再重新规划移泊。
+                  </p>
                 </div>
-
-                <div className="space-y-4 pt-1">
+              ) : (
+                <div className="bg-gradient-to-br from-blue-50/50 via-slate-50 to-indigo-50/30 p-4 rounded-2xl border border-blue-200 space-y-4">
                   
-                  {/* 嵌入 停泊位可视化选择组件 */}
-                  <BerthPicker
-                    startDate={startDate}
-                    selectedBerthId={selectedBerthId}
-                    selectedSlotNumber={selectedSlotNumber}
-                    onSelectBerth={handleSelectBerth}
-                    shipName={projectName}
-                    shipType={shipType}
-                  />
-
-                  {/* 5号码头小型船只规则限制强提示 */}
-                  {is5BerthViolation && (
-                    <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs flex items-start gap-2 animate-fadeIn">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  {/* 标题 */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">3</span>
                       <div>
-                        <strong className="block mb-0.5">5号码头专用船型规则提示：</strong>
-                        当前选择的【5号码头】为小型船舶专属泊位（规则：仅限1艘小型船只，如拖轮、工作艇等）。当前项目为【{shipType} - {projectName}】，若为大型主船体，建议选择1号/6号平船台或2/3/4号码头。
+                        <h3 className="text-slate-900 font-bold text-sm flex items-center gap-2">
+                          <span>船厂厂区停泊场景与移泊规划</span>
+                          <span className="text-xs font-normal text-cyan-700 bg-cyan-100/70 border border-cyan-200 px-2 py-0.5 rounded-full">
+                            占用状态与船型匹配校验
+                          </span>
+                        </h3>
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="space-y-4 pt-1">
+                    
+                    {/* 嵌入 停泊位可视化选择组件 */}
+                    <BerthPicker
+                      startDate={startDate}
+                      selectedBerthId={selectedBerthId}
+                      selectedSlotNumber={selectedSlotNumber}
+                      onSelectBerth={handleSelectBerth}
+                      shipName={projectName}
+                      shipType={shipType}
+                    />
+
+                    {/* 5号码头小型船只规则限制强提示 */}
+                    {is5BerthViolation && (
+                      <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs flex items-start gap-2 animate-fadeIn">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block mb-0.5">5号码头专用船型规则提示：</strong>
+                          当前选择的【5号码头】为小型船舶专属泊位（规则：仅限1艘小型船只，如拖轮、工作艇等）。当前项目为【{shipType} - {projectName}】，若为大型主船体，建议选择1号/6号平船台或2/3/4号码头。
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
 
                 </div>
-
-              </div>
+              )}
             </>
           )}
 

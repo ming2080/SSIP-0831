@@ -11,7 +11,7 @@ export interface Project {
   id: string;
   name: string;
   shipType: string;
-  status: 'planning' | 'in_progress' | 'completed' | 'suspended';
+  status: 'planning' | 'in_progress' | 'completed' | 'suspended' | 'temporary_departure';
   progress: number;
   startDate: string;
   endDate: string;

@@ -354,6 +354,13 @@ export function ProjectManagement() {
             前期规划中
           </span>
         );
+      case 'temporary_departure':
+        return (
+          <span className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap">
+            <Anchor className="w-3 h-3 text-sky-500 animate-pulse" />
+            临时离港
+          </span>
+        );
       case 'completed':
         return (
           <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap">
@@ -491,6 +498,7 @@ export function ProjectManagement() {
               <option value="ALL">全部状态</option>
               <option value="in_progress">施工进行中</option>
               <option value="planning">前期规划中</option>
+              <option value="temporary_departure">临时离港</option>
               <option value="completed">已竣工交船</option>
               <option value="suspended">暂停施工</option>
             </select>
@@ -916,6 +924,13 @@ export function ProjectManagement() {
                   dockingArea: '已竣工交付离厂',
                   phase: '竣工交付'
                 };
+              } else if (newStatus === 'temporary_departure') {
+                return {
+                  ...p,
+                  status: 'temporary_departure',
+                  dockingArea: '临时离港 (停泊位已自动释放)',
+                  phase: '临时离港试航/避风'
+                };
               }
               return { ...p, status: newStatus };
             }
@@ -924,6 +939,12 @@ export function ProjectManagement() {
           if (newStatus === 'completed') {
             const proj = projects.find(p => p.id === projId);
             setSuccessBanner(`项目【${proj?.name || projId}】已成功设定为【已竣工交船】！系统已自动解绑关联设备与电子围栏，项目处于归档模式。`);
+            setTimeout(() => {
+              setSuccessBanner(null);
+            }, 6000);
+          } else if (newStatus === 'temporary_departure') {
+            const proj = projects.find(p => p.id === projId);
+            setSuccessBanner(`项目【${proj?.name || projId}】已成功设定为【临时离港】状态！该阶段的厂区停泊位已自动释放供其他船舶临时停靠。`);
             setTimeout(() => {
               setSuccessBanner(null);
             }, 6000);
