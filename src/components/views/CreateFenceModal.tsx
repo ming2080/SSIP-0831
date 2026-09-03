@@ -270,18 +270,18 @@ export function CreateFenceModal({
   const isNameEmpty = !fenceName.trim();
   const isProjectIdEmpty = scopeType === 'project' && (!projectId || !projectId.trim());
   const isProjectPhaseEmpty = scopeType === 'project' && (!projectPhase || !projectPhase.trim() || projectPhase.includes('请选择'));
-  const isProjectSectionEmpty = scopeType === 'project' && (!projectSection || !projectSection.trim() || projectSection.includes('请选择'));
+  const isModelLevelEmpty = scopeType === 'project' && !modelLevel;
 
   const showNameError = isSubmitted && isNameEmpty;
   const showProjectIdError = isSubmitted && isProjectIdEmpty;
   const showProjectPhaseError = isSubmitted && isProjectPhaseEmpty;
-  const showProjectSectionError = isSubmitted && isProjectSectionEmpty;
+  const showModelLevelError = isSubmitted && isModelLevelEmpty;
 
   const handleConfirm = () => {
     setIsSubmitted(true);
     
-    // 当选择关联船舶项目时，校验关联表单项为必填项 (需求1)
-    if (isNameEmpty || isProjectIdEmpty || isProjectPhaseEmpty || isProjectSectionEmpty) {
+    // 当选择关联船舶项目时，校验关联表单项为必填项
+    if (isNameEmpty || isProjectIdEmpty || isProjectPhaseEmpty || isModelLevelEmpty) {
       return;
     }
 
@@ -580,7 +580,7 @@ export function CreateFenceModal({
                             }
                           }}
                           className={`w-full px-2.5 py-1.5 bg-white border rounded-md text-xs text-slate-800 focus:outline-none transition-colors appearance-none cursor-pointer pr-7 truncate font-medium ${
-                            showProjectSectionError ? 'border-rose-500 ring-1 ring-rose-500/20' : 'border-blue-300 focus:border-blue-500 bg-blue-50/20'
+                            showModelLevelError ? 'border-rose-500 ring-1 ring-rose-500/20' : 'border-blue-300 focus:border-blue-500 bg-blue-50/20'
                           }`}
                         >
                           {FENCE_MODEL_LAYER_OPTIONS.map((layer) => (
@@ -591,7 +591,7 @@ export function CreateFenceModal({
                         </select>
                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
-                      {showProjectSectionError && (
+                      {showModelLevelError && (
                         <p className="text-rose-500 text-[11px] mt-1 font-normal">请选择模型分层</p>
                       )}
                     </div>

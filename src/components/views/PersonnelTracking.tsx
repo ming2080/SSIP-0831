@@ -1636,15 +1636,6 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
           )}
         </div>
 
-        {/* 底部基站状态栏 */}
-        <div className="p-3 bg-white border-t border-slate-200 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Radio className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-            <span className="text-[11px] text-slate-600 font-medium">高精度定位基站已就绪</span>
-          </div>
-          <span className="text-[10px] font-mono text-slate-400">刷新率: 1Hz</span>
-        </div>
-
       </div>
 
       {/* ===================== 右侧一体化地图核心监控工作台 (需求 2 & 需求 3) ===================== */}

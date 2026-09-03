@@ -1160,12 +1160,6 @@ export function ElectronicFence() {
                           <span className="text-slate-200">{activeFence.projectPhase}</span>
                         </div>
                       )}
-                      {activeFence.projectSection && (
-                        <div>
-                          <span className="text-slate-400">船体作业舱段：</span>
-                          <span className="text-slate-200">{activeFence.projectSection}</span>
-                        </div>
-                      )}
                     </>
                   )}
                 </div>
