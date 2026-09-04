@@ -828,13 +828,13 @@ export function ElectronicFence() {
                     <ChevronDown className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${isLayerDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* 分层下拉选择框 */}
+                  {/* 分层下拉选择框 (自适应文本宽度) */}
                   {isLayerDropdownOpen && (
                     <div 
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute top-full mt-2 left-0 w-64 bg-[#061833]/98 border border-cyan-400/80 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_20px_rgba(0,229,255,0.3)] backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                      className="absolute top-full mt-2 left-0 w-max min-w-full bg-[#061833]/98 border border-cyan-400/80 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_20px_rgba(0,229,255,0.3)] backdrop-blur-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 whitespace-nowrap"
                     >
-                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2 py-1 border-b border-blue-900/60 mb-1 flex items-center justify-between">
+                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2 py-1 border-b border-blue-900/60 mb-1 flex items-center justify-between gap-4 whitespace-nowrap">
                         <span>造船项目 BIM 二级模型分层</span>
                         <span className="text-cyan-400">3D空间围栏</span>
                       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -48,6 +48,7 @@ import {
   Clock,
   Sparkles,
   Camera,
+  TrendingUp,
   X
 } from 'lucide-react';
 import { ViewType } from '@/src/types';
@@ -221,13 +222,7 @@ const SciFiPanel: React.FC<{
       </div>
       
       <div className="flex items-center gap-1.5 shrink-0">
-        {extra ? extra : (
-          <div className="flex gap-1 opacity-70">
-            <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full animate-pulse"></div>
-            <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-          </div>
-        )}
+        {extra || null}
       </div>
     </div>
 
@@ -255,7 +250,7 @@ interface ProjectDashboardConfig {
   offDutyPersonnel: number;
   alarmPersonnel: number;
   distributionData: { name: string; value: number; max: number }[];
-  typeData: { name: string; value: number; color: string }[];
+  typeData: { name: string; value: number; color: string; count?: number }[];
   trendData: { time: string; 在岗人数: number; 报警人数: number }[];
   deviceSummary: { total: number; online: number; offline: number; fault: number };
   deviceList: { id: string; type: string; status: string; location: string; statusColor: string; dotColor: string }[];
@@ -884,33 +879,93 @@ export const IN_CONSTRUCTION_SHIP_PARKINGS = [
   }
 ];
 
-// 厂区视图的数据
+// 厂区视图的数据 (当日累计班组分布)
 const yardDistributionData = [
-  { name: '1#船台', value: 342, max: 350 },
-  { name: '2#船台', value: 286, max: 350 },
-  { name: '总装车间', value: 210, max: 350 },
-  { name: '分段车间', value: 158, max: 350 },
-  { name: '涂装车间', value: 132, max: 350 },
-  { name: '机舱车间', value: 80, max: 350 },
-  { name: '仓储区', value: 40, max: 350 },
+  { name: '安全环保部', value: 48, max: 350 },
+  { name: '搭载部', value: 286, max: 350 },
+  { name: '船装部', value: 165, max: 350 },
+  { name: '机电部', value: 142, max: 350 },
+  { name: '船体电焊班组', value: 320, max: 350 },
+  { name: '喷涂班组', value: 118, max: 350 },
+  { name: '船体装配班组', value: 210, max: 350 },
+  { name: '涂装部', value: 132, max: 350 },
+  { name: '船体打磨班组', value: 95, max: 350 },
 ];
 
 const yardTypeData = [
-  { name: '管理人员', value: 12.3, color: '#00b4d8' },
-  { name: '技术人员', value: 28.7, color: '#00d26a' },
-  { name: '作业人员', value: 45.6, color: '#ffc107' },
-  { name: '外包人员', value: 13.4, color: '#ff7849' },
+  { name: '管理人员', value: 12.3, count: 158, color: '#00b4d8' },
+  { name: '技术人员', value: 28.7, count: 368, color: '#00d26a' },
+  { name: '作业人员', value: 45.6, count: 586, color: '#ffc107' },
+  { name: '外包人员', value: 13.4, count: 172, color: '#ff7849' },
 ];
 
-const yardTrendData = [
-  { time: '00:00', 在岗人数: 220, 报警人数: 15 },
-  { time: '04:00', 在岗人数: 180, 报警人数: 10 },
-  { time: '08:00', 在岗人数: 1100, 报警人数: 120 },
-  { time: '12:00', 在岗人数: 1450, 报警人数: 230 },
-  { time: '16:00', 在岗人数: 1320, 报警人数: 180 },
-  { time: '20:00', 在岗人数: 600, 报警人数: 40 },
-  { time: '24:00', 在岗人数: 200, 报警人数: 10 },
+// 近7日告警趋势数据 (展示人员违规与环境气体事件合计数趋势)
+const yardAlarmTrendData = [
+  { day: '08-29', 人员告警: 6, 环境告警: 4, 告警总数: 10 },
+  { day: '08-30', 人员告警: 9, 环境告警: 5, 告警总数: 14 },
+  { day: '08-31', 人员告警: 4, 环境告警: 3, 告警总数: 7 },
+  { day: '09-01', 人员告警: 11, 环境告警: 7, 告警总数: 18 },
+  { day: '09-02', 人员告警: 8, 环境告警: 4, 告警总数: 12 },
+  { day: '09-03', 人员告警: 7, 环境告警: 5, 告警总数: 12 },
+  { day: '09-04', 人员告警: 5, 环境告警: 3, 告警总数: 8 },
 ];
+
+const projectAlarmTrendMap: Record<string, { day: string; 人员告警: number; 环境告警: number; 告警总数: number }[]> = {
+  'PRJ-2026-LNG01': [
+    { day: '08-29', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '08-30', 人员告警: 4, 环境告警: 2, 告警总数: 6 },
+    { day: '08-31', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+    { day: '09-01', 人员告警: 5, 环境告警: 3, 告警总数: 8 },
+    { day: '09-02', 人员告警: 3, 环境告警: 2, 告警总数: 5 },
+    { day: '09-03', 人员告警: 4, 环境告警: 1, 告警总数: 5 },
+    { day: '09-04', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+  ],
+  'PRJ-2026-BOX02': [
+    { day: '08-29', 人员告警: 3, 环境告警: 2, 告警总数: 5 },
+    { day: '08-30', 人员告警: 5, 环境告警: 3, 告警总数: 8 },
+    { day: '08-31', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-01', 人员告警: 6, 环境告警: 4, 告警总数: 10 },
+    { day: '09-02', 人员告警: 4, 环境告警: 2, 告警总数: 6 },
+    { day: '09-03', 人员告警: 3, 环境告警: 3, 告警总数: 6 },
+    { day: '09-04', 人员告警: 3, 环境告警: 1, 告警总数: 4 },
+  ],
+  'PRJ-2026-TANK03': [
+    { day: '08-29', 人员告警: 1, 环境告警: 2, 告警总数: 3 },
+    { day: '08-30', 人员告警: 3, 环境告警: 1, 告警总数: 4 },
+    { day: '08-31', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-01', 人员告警: 4, 环境告警: 3, 告警总数: 7 },
+    { day: '09-02', 人员告警: 2, 环境告警: 2, 告警总数: 4 },
+    { day: '09-03', 人员告警: 3, 环境告警: 1, 告警总数: 4 },
+    { day: '09-04', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+  ],
+  'PRJ-2026-BULK04': [
+    { day: '08-29', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '08-30', 人员告警: 3, 环境告警: 2, 告警总数: 5 },
+    { day: '08-31', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+    { day: '09-01', 人员告警: 4, 环境告警: 2, 告警总数: 6 },
+    { day: '09-02', 人员告警: 3, 环境告警: 1, 告警总数: 4 },
+    { day: '09-03', 人员告警: 2, 环境告警: 2, 告警总数: 4 },
+    { day: '09-04', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+  ],
+  'PRJ-2026-CAR05': [
+    { day: '08-29', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+    { day: '08-30', 人员告警: 2, 环境告警: 2, 告警总数: 4 },
+    { day: '08-31', 人员告警: 1, 环境告警: 0, 告警总数: 1 },
+    { day: '09-01', 人员告警: 3, 环境告警: 2, 告警总数: 5 },
+    { day: '09-02', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-03', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-04', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+  ],
+  'PRJ-2026-WIND06': [
+    { day: '08-29', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+    { day: '08-30', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '08-31', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+    { day: '09-01', 人员告警: 3, 环境告警: 2, 告警总数: 5 },
+    { day: '09-02', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-03', 人员告警: 2, 环境告警: 1, 告警总数: 3 },
+    { day: '09-04', 人员告警: 1, 环境告警: 1, 告警总数: 2 },
+  ],
+};
 
 const yardAlerts: DashboardAlertItem[] = [
   { id: 'ALT-YD-01', time: '10:25', name: 'GD-02(硫化氢探头)', category: 'environment', categoryLabel: '环境气体', reason: 'H₂S硫化氢浓度超标(18.5ppm)', location: '519-1机舱底', dangerLevel: 'high', gasReading: 'H₂S: 18.5ppm (超标85%)', deviceLinked: 'GD-02 固定式探测仪', status: 'pending' },
@@ -927,23 +982,20 @@ const yardAlerts: DashboardAlertItem[] = [
 ];
 
 const yardDeviceTypes = [
-  { name: '主基站', value: 38.0, color: '#00d2ff' },
-  { name: '气体探测器', value: 28.0, color: '#00e676' },
-  { name: '声光报警器', value: 22.0, color: '#ff9800' },
-  { name: '摄像头', value: 12.0, color: '#a855f7' },
+  { name: '主基站', value: 218, color: '#00d2ff' },
+  { name: '气体探测器', value: 162, color: '#00e676' },
+  { name: '声光报警器', value: 132, color: '#ff9800' },
 ];
 
 const yardDeviceList = [
   { id: 'BS-01 (11号主基站)', type: '主基站', status: '在线', location: '制造部边跨路口', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
   { id: 'BS-02 (7号主基站)', type: '主基站', status: '在线', location: '2万吨船台尾段', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'GD-01 (四合一气体仪)', type: '气体探测器', status: '在线', location: '517-9号船机舱', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'GD-02 (氧气/CO探头)', type: '气体探测器', status: '在线', location: '519-1机舱', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'AL-01 (防爆声光警报)', type: '声光报警器', status: '在线', location: '145-3机舱', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'CAM-01 (香烟识别摄像头)', type: '摄像头', status: '在线', location: '制造部烟火高危区', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'CAM-02 (安全帽识别摄像头)', type: '摄像头', status: '在线', location: '2万吨船台登船口', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
-  { id: 'BS-03 (5号主基站)', type: '主基站', status: '离线', location: '机电仓库', statusColor: 'text-[#ffb300]', dotColor: 'bg-[#ffb300]' },
-  { id: 'GD-03 (硫化氢监测探头)', type: '气体探测器', status: '故障', location: '平船台机舱', statusColor: 'text-[#ff1744]', dotColor: 'bg-[#ff1744]' },
-  { id: 'CAM-04 (反光衣识别摄像头)', type: '摄像头', status: '在线', location: '4号浮动码头路口', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' }
+  { id: 'BS-03 (5号主基站)', type: '主基站', status: '在线', location: '1号龙门吊立柱', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
+  { id: 'BS-04 (12号主基站)', type: '主基站', status: '在线', location: '涂装车间3区入口', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
+  { id: 'BS-05 (3号主基站)', type: '主基站', status: '在线', location: '分段搭载平台东', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
+  { id: 'BS-06 (8号主基站)', type: '主基站', status: '离线', location: '机电仓库顶层', statusColor: 'text-[#ffb300]', dotColor: 'bg-[#ffb300]' },
+  { id: 'BS-07 (2号主基站)', type: '主基站', status: '在线', location: '艏部合拢口高架', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' },
+  { id: 'BS-08 (15号主基站)', type: '主基站', status: '在线', location: '4号浮动码头路口', statusColor: 'text-[#00e676]', dotColor: 'bg-[#00e676]' }
 ];
 
 // 厂区全景图空间电子围栏多边形定义 (尺寸缩减为原来的一半 50%，保持中心位置与高精度贴合)
@@ -2079,6 +2131,12 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchKey, setSearchKey] = useState('');
   
+  // 综合搜索类型定义 (人员 / 设备 / 区域 / 船只)
+  type SearchTargetType = 'personnel' | 'device' | 'area' | 'ship';
+  const [searchTargetType, setSearchTargetType] = useState<SearchTargetType>('personnel');
+  const [isSearchTypeDropdownOpen, setIsSearchTypeDropdownOpen] = useState(false);
+  const [selectedShipDetail, setSelectedShipDetail] = useState<any | null>(null);
+
   // 面板显隐控制状态 (默认展示，点击背景滑动隐藏)
   const [isPanelsVisible, setIsPanelsVisible] = useState(true);
 
@@ -2104,9 +2162,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
 
   // 轮播滚动 Refs
   const alertsScrollRef = useRef<HTMLDivElement>(null);
-  const devicesScrollRef = useRef<HTMLDivElement>(null);
   const [isAlertsHovered, setIsAlertsHovered] = useState(false);
-  const [isDevicesHovered, setIsDevicesHovered] = useState(false);
 
   // 获取当前选中的造船项目配置
   const currentProject = projectListConfig.find(p => p.id === selectedProjectId) || projectListConfig[0];
@@ -2132,21 +2188,6 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
     return () => clearInterval(interval);
   }, [isAlertsHovered]);
 
-  // 2. 设备状态列表平滑自动轮播
-  useEffect(() => {
-    if (isDevicesHovered) return;
-    const interval = setInterval(() => {
-      const el = devicesScrollRef.current;
-      if (!el) return;
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) {
-        el.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        el.scrollBy({ top: 28, behavior: 'smooth' });
-      }
-    }, 3200);
-    return () => clearInterval(interval);
-  }, [isDevicesHovered]);
-
   const formatDate = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -2162,16 +2203,310 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
   // 点击背景图切换面板显隐 (优先保障位于背景图之上的具体组件与定位点位事件，若有打开的弹窗优先关闭弹窗)
   const handleBackgroundClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selectedDeviceDetail || selectedFenceDetail || selectedWorkerDetail || activeAlarmModalData || isAlarmListModalOpen || isProjectDropdownOpen) {
+    if (selectedDeviceDetail || selectedFenceDetail || selectedWorkerDetail || selectedShipDetail || selectedWorkerCluster || activeAlarmModalData || isAlarmListModalOpen || isProjectDropdownOpen || isSearchTypeDropdownOpen) {
       setIsProjectDropdownOpen(false);
+      setIsSearchTypeDropdownOpen(false);
       setSelectedDeviceDetail(null);
       setSelectedFenceDetail(null);
       setSelectedWorkerDetail(null);
+      setSelectedShipDetail(null);
+      setSelectedWorkerCluster(null);
       setActiveAlarmModalData(null);
       setIsAlarmListModalOpen(false);
       return;
     }
     setIsPanelsVisible(prev => !prev);
+  };
+
+  // 综合搜索并冒泡定位执行逻辑 (支持人员、设备、区域、船只)
+  const handleSearch = () => {
+    const kw = searchKey.trim().toLowerCase();
+    if (!kw) {
+      setAlarmNoticeToast('请输入搜索关键字');
+      setTimeout(() => setAlarmNoticeToast(null), 3000);
+      return;
+    }
+
+    // 关闭已有各类弹窗
+    setIsSearchTypeDropdownOpen(false);
+    setSelectedWorkerDetail(null);
+    setSelectedDeviceDetail(null);
+    setSelectedFenceDetail(null);
+    setSelectedShipDetail(null);
+    setSelectedWorkerCluster(null);
+
+    if (searchTargetType === 'personnel') {
+      // 1. 人员搜索
+      let foundWorker: any = null;
+      let targetScope: 'yard' | 'project' = viewScope;
+      let targetProj: any = null;
+
+      // 厂区人员点位匹配
+      const yardMatch = YARD_SPATIAL_WORKERS.find(w => 
+        w.name.toLowerCase().includes(kw) || 
+        w.role.toLowerCase().includes(kw) || 
+        w.id.toLowerCase().includes(kw) ||
+        (w.personId && w.personId.toLowerCase().includes(kw)) ||
+        (w.area && w.area.toLowerCase().includes(kw))
+      );
+
+      // 各造船项目人员点位匹配
+      let projMatch: any = null;
+      let projMatchOwner: any = null;
+      for (const prj of projectListConfig) {
+        const m = prj.markers.find(marker => 
+          marker.name.toLowerCase().includes(kw) || 
+          marker.role.toLowerCase().includes(kw) || 
+          marker.id.toLowerCase().includes(kw)
+        );
+        if (m) {
+          projMatch = m;
+          projMatchOwner = prj;
+          break;
+        }
+      }
+
+      // 根据当前视图优先级确定目标
+      if (viewScope === 'yard') {
+        if (yardMatch) {
+          foundWorker = yardMatch;
+          targetScope = 'yard';
+        } else if (projMatch) {
+          foundWorker = projMatch;
+          targetScope = 'project';
+          targetProj = projMatchOwner;
+        }
+      } else {
+        if (projMatch && projMatchOwner.id === selectedProjectId) {
+          foundWorker = projMatch;
+          targetScope = 'project';
+          targetProj = projMatchOwner;
+        } else if (projMatch) {
+          foundWorker = projMatch;
+          targetScope = 'project';
+          targetProj = projMatchOwner;
+        } else if (yardMatch) {
+          foundWorker = yardMatch;
+          targetScope = 'yard';
+        }
+      }
+
+      if (foundWorker) {
+        if (targetScope === 'project') {
+          setViewScope('project');
+          if (targetProj) setSelectedProjectId(targetProj.id);
+          setShowPersonnelLayer(true);
+          setSelectedWorkerDetail({
+            id: foundWorker.id,
+            name: foundWorker.name,
+            role: foundWorker.role,
+            company: '船体装配作业部',
+            phone: '138-1234-5678',
+            location: `${targetProj?.name || currentProject.name} - ${foundWorker.role}作业区`,
+            baseStation: `${foundWorker.role}基站`,
+            battery: '95%',
+            signalPower: '-64 dBm',
+            status: foundWorker.type === 'alarm' ? 'alarm' : 'online',
+            top: foundWorker.top,
+            left: foundWorker.left,
+            workerRef: foundWorker
+          });
+          setAlarmNoticeToast(`已定位到人员：${foundWorker.name} (${foundWorker.role})`);
+        } else {
+          setViewScope('yard');
+          setShowPersonnelLayer(true);
+          setSelectedWorkerDetail({
+            id: foundWorker.id,
+            name: foundWorker.name,
+            role: foundWorker.role,
+            company: '造船工程一部',
+            phone: '139-2345-6789',
+            location: foundWorker.area,
+            baseStation: '厂区主基站',
+            battery: '98%',
+            signalPower: '-62 dBm',
+            status: foundWorker.status === '告警' ? 'alarm' : 'online',
+            top: foundWorker.top,
+            left: foundWorker.left,
+            workerRef: foundWorker
+          });
+          setAlarmNoticeToast(`已定位到人员：${foundWorker.name} (${foundWorker.role})`);
+        }
+      } else {
+        setAlarmNoticeToast(`未找到姓名或工种包含「${kw}」的人员`);
+      }
+    } else if (searchTargetType === 'device') {
+      // 2. 设备搜索
+      let matchedDev: SpatialDevice | null = null;
+      let targetScope: 'yard' | 'project' = viewScope;
+      let targetProj: any = null;
+
+      const yardDevMatch = YARD_SPATIAL_DEVICES.find(d => 
+        d.name.toLowerCase().includes(kw) || 
+        d.code.toLowerCase().includes(kw) || 
+        d.id.toLowerCase().includes(kw) || 
+        d.categoryLabel.toLowerCase().includes(kw) ||
+        d.location.toLowerCase().includes(kw)
+      );
+
+      let projDevMatch: SpatialDevice | null = null;
+      let projDevOwner: any = null;
+      for (const prj of projectListConfig) {
+        const devs = PROJECT_SPATIAL_DEVICES[prj.id] || [];
+        const d = devs.find(item => 
+          item.name.toLowerCase().includes(kw) || 
+          item.code.toLowerCase().includes(kw) || 
+          item.id.toLowerCase().includes(kw) || 
+          item.categoryLabel.toLowerCase().includes(kw) ||
+          item.location.toLowerCase().includes(kw)
+        );
+        if (d) {
+          projDevMatch = d;
+          projDevOwner = prj;
+          break;
+        }
+      }
+
+      if (viewScope === 'yard') {
+        if (yardDevMatch) {
+          matchedDev = yardDevMatch;
+          targetScope = 'yard';
+        } else if (projDevMatch) {
+          matchedDev = projDevMatch;
+          targetScope = 'project';
+          targetProj = projDevOwner;
+        }
+      } else {
+        if (projDevMatch && projDevOwner.id === selectedProjectId) {
+          matchedDev = projDevMatch;
+          targetScope = 'project';
+          targetProj = projDevOwner;
+        } else if (projDevMatch) {
+          matchedDev = projDevMatch;
+          targetScope = 'project';
+          targetProj = projDevOwner;
+        } else if (yardDevMatch) {
+          matchedDev = yardDevMatch;
+          targetScope = 'yard';
+        }
+      }
+
+      if (matchedDev) {
+        if (targetScope === 'project') {
+          setViewScope('project');
+          if (targetProj) setSelectedProjectId(targetProj.id);
+        } else {
+          setViewScope('yard');
+        }
+        setShowDeviceLayer(true);
+        setSelectedDeviceCategory('all');
+        setSelectedDeviceDetail(matchedDev);
+        setAlarmNoticeToast(`已定位到设备：${matchedDev.name} (${matchedDev.code})`);
+      } else {
+        setAlarmNoticeToast(`未找到名称或编号包含「${kw}」的设备`);
+      }
+    } else if (searchTargetType === 'area') {
+      // 3. 区域/电子围栏搜索
+      let matchedFence: SpatialElectronicFence | null = null;
+      let targetScope: 'yard' | 'project' = viewScope;
+      let targetProj: any = null;
+
+      const yardFenceMatch = YARD_ELECTRONIC_FENCES.find(f => 
+        f.name.toLowerCase().includes(kw) || 
+        f.code.toLowerCase().includes(kw) || 
+        f.id.toLowerCase().includes(kw) ||
+        (f.details?.areaType && f.details.areaType.toLowerCase().includes(kw))
+      );
+
+      let projFenceMatch: SpatialElectronicFence | null = null;
+      let projFenceOwner: any = null;
+      for (const prj of projectListConfig) {
+        const fences = PROJECT_ELECTRONIC_FENCES[prj.id] || [];
+        const f = fences.find(item => 
+          item.name.toLowerCase().includes(kw) || 
+          item.code.toLowerCase().includes(kw) || 
+          item.id.toLowerCase().includes(kw) ||
+          (item.details?.areaType && item.details.areaType.toLowerCase().includes(kw))
+        );
+        if (f) {
+          projFenceMatch = f;
+          projFenceOwner = prj;
+          break;
+        }
+      }
+
+      if (viewScope === 'yard') {
+        if (yardFenceMatch) {
+          matchedFence = yardFenceMatch;
+          targetScope = 'yard';
+        } else if (projFenceMatch) {
+          matchedFence = projFenceMatch;
+          targetScope = 'project';
+          targetProj = projFenceOwner;
+        }
+      } else {
+        if (projFenceMatch && projFenceOwner.id === selectedProjectId) {
+          matchedFence = projFenceMatch;
+          targetScope = 'project';
+          targetProj = projFenceOwner;
+        } else if (projFenceMatch) {
+          matchedFence = projFenceMatch;
+          targetScope = 'project';
+          targetProj = projFenceOwner;
+        } else if (yardFenceMatch) {
+          matchedFence = yardFenceMatch;
+          targetScope = 'yard';
+        }
+      }
+
+      if (matchedFence) {
+        if (targetScope === 'project') {
+          setViewScope('project');
+          if (targetProj) setSelectedProjectId(targetProj.id);
+        } else {
+          setViewScope('yard');
+        }
+        setShowFenceLayer(true);
+        setSelectedFenceDetail(matchedFence);
+        setAlarmNoticeToast(`已定位到区域：${matchedFence.name} (${matchedFence.code})`);
+      } else {
+        setAlarmNoticeToast(`未找到名称或编码包含「${kw}」的区域/电子围栏`);
+      }
+    } else if (searchTargetType === 'ship') {
+      // 4. 船只搜索
+      const matchedShip = projectListConfig.find(p => 
+        p.name.toLowerCase().includes(kw) || 
+        p.shipType.toLowerCase().includes(kw) || 
+        p.id.toLowerCase().includes(kw) || 
+        (p.shipCode && p.shipCode.toLowerCase().includes(kw)) || 
+        (p.dockingArea && p.dockingArea.toLowerCase().includes(kw)) ||
+        (p.phase && p.phase.toLowerCase().includes(kw))
+      );
+
+      if (matchedShip) {
+        setSelectedProjectId(matchedShip.id);
+        setViewScope('project');
+        setSelectedShipDetail({
+          id: matchedShip.id,
+          name: matchedShip.name,
+          shipType: matchedShip.shipType,
+          hullNumber: matchedShip.shipCode,
+          client: matchedShip.manager ? `项目经理: ${matchedShip.manager}` : undefined,
+          phase: matchedShip.phase,
+          progress: matchedShip.progress,
+          totalPersonnel: matchedShip.totalPersonnel,
+          onDutyPersonnel: matchedShip.onDutyPersonnel,
+          deviceCount: matchedShip.deviceSummary?.total || 48,
+          alarmCount: matchedShip.alerts?.length || 0,
+          top: '38%',
+          left: '50%'
+        });
+        setAlarmNoticeToast(`已定位到船只：${matchedShip.name} (${matchedShip.shipType})`);
+      } else {
+        setAlarmNoticeToast(`未找到船名或型号包含「${kw}」的船只`);
+      }
+    }
+    setTimeout(() => setAlarmNoticeToast(null), 3500);
   };
 
   // 动态获取当前背景图
@@ -2180,14 +2515,78 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
   // 动态获取当前数据流
   const currentDistribution = viewScope === 'yard' ? yardDistributionData : currentProject.distributionData;
   const currentTypeData = viewScope === 'yard' ? yardTypeData : currentProject.typeData;
-  const currentTrendData = viewScope === 'yard' ? yardTrendData : currentProject.trendData;
+  const currentAlarmTrendData = viewScope === 'yard' 
+    ? yardAlarmTrendData 
+    : (projectAlarmTrendMap[currentProject.id] || yardAlarmTrendData);
   const currentAlerts = viewScope === 'yard' ? yardAlerts : currentProject.alerts;
   const currentDeviceSummary = viewScope === 'yard' ? { total: 512, online: 485, offline: 27, fault: 8 } : currentProject.deviceSummary;
+  
+  // 动态获取当前设备类型统计 (包含台数与占比)
+  const currentDeviceTypes = useMemo(() => {
+    if (viewScope === 'yard') {
+      const total = 512;
+      return yardDeviceTypes.map(d => ({
+        ...d,
+        percent: ((d.value / total) * 100).toFixed(1)
+      }));
+    }
+    const total = currentDeviceSummary.total || 50;
+    const bsCount = Math.round(total * 0.44);
+    const gasCount = Math.round(total * 0.32);
+    const alarmCount = Math.max(1, total - bsCount - gasCount);
+    return [
+      { name: '主基站', value: bsCount, color: '#00d2ff', percent: ((bsCount / total) * 100).toFixed(1) },
+      { name: '气体探测器', value: gasCount, color: '#00e676', percent: ((gasCount / total) * 100).toFixed(1) },
+      { name: '声光报警器', value: alarmCount, color: '#ff9800', percent: ((alarmCount / total) * 100).toFixed(1) },
+    ];
+  }, [viewScope, currentDeviceSummary.total]);
+
   const currentDeviceList = viewScope === 'yard' ? yardDeviceList : currentProject.deviceList;
   const currentTotal = viewScope === 'yard' ? 1284 : currentProject.totalPersonnel;
   const currentOnDuty = viewScope === 'yard' ? 1248 : currentProject.onDutyPersonnel;
   const currentOffDuty = viewScope === 'yard' ? 36 : currentProject.offDutyPersonnel;
   const currentAlarmCount = viewScope === 'yard' ? 8 : currentProject.alarmPersonnel;
+
+  // 实时告警信息三种数据统计：今日告警数、已处理数、未处理数
+  const todayAlertCount = currentAlerts.length;
+  const handledAlertCount = useMemo(() => currentAlerts.filter(a => a.status === 'resolved').length, [currentAlerts]);
+  const unhandledAlertCount = todayAlertCount - handledAlertCount;
+
+  // 告警信息排序：
+  // 1. 未处理（status !== 'resolved'）固定排在前面，已处理（status === 'resolved'）排在后面
+  // 2. 未处理告警中，按严重程度从高到低（high > medium > low）固定排序
+  // 3. 严重程度相同时，按时间点先后排序（最新时间排前面）
+  // 4. 已处理告警内部，同样按时间倒序排在末尾
+  const sortedCurrentAlerts = useMemo(() => {
+    const dangerPriority: Record<string, number> = {
+      high: 3,
+      medium: 2,
+      low: 1
+    };
+
+    return [...currentAlerts].sort((a, b) => {
+      const aResolved = a.status === 'resolved';
+      const bResolved = b.status === 'resolved';
+
+      // 未处理排前面，已处理排后面
+      if (!aResolved && bResolved) return -1;
+      if (aResolved && !bResolved) return 1;
+
+      // 如果同为未处理：先比严重程度高低
+      if (!aResolved && !bResolved) {
+        const pA = dangerPriority[a.dangerLevel || 'medium'] || 2;
+        const pB = dangerPriority[b.dangerLevel || 'medium'] || 2;
+        if (pA !== pB) {
+          return pB - pA;
+        }
+        // 严重程度相同，按时间降序（最新在上）
+        return (b.time || '').localeCompare(a.time || '');
+      }
+
+      // 如果同为已处理：按时间倒序
+      return (b.time || '').localeCompare(a.time || '');
+    });
+  }, [currentAlerts]);
 
   // 动态获取当前空间定位设备
   const allCurrentSpatialDevices = viewScope === 'yard' 
@@ -2972,6 +3371,102 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
           </div>
         )}
 
+        {/* 🚢 8. 搜索船只或选中船只弹出的冒泡定位详情卡片 */}
+        {selectedShipDetail && (
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="absolute z-50 animate-fadeIn pointer-events-auto transition-all duration-200 select-none"
+            style={{
+              top: selectedShipDetail.top || '38%',
+              left: selectedShipDetail.left || '50%',
+              transform: 'translate(-50%, -100%)',
+              marginTop: '-18px'
+            }}
+          >
+            <div className="w-80 bg-[#061833]/95 border border-[#00e5ff] backdrop-blur-xl rounded-2xl p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.85),0_0_24px_rgba(0,229,255,0.35)] relative text-[#e2f1ff]">
+              {/* 向下指向的冒泡小三角 */}
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-[#061833] border-r border-b border-[#00e5ff] rotate-45"></div>
+
+              {/* 标题栏 */}
+              <div className="flex items-center justify-between border-b border-[#1f4a7c]/80 pb-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#00e5ff]/20 border border-[#00e5ff] flex items-center justify-center text-[#00e5ff] shrink-0">
+                    <Ship className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-white leading-none truncate">{selectedShipDetail.name}</h4>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-[#00e676]/15 text-[#00e676] border border-[#00e676]/40 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] animate-pulse"></span>
+                        在建
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#8ab4f8] font-mono block mt-0.5">
+                      {selectedShipDetail.shipType} · {selectedShipDetail.hullNumber || selectedShipDetail.id}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedShipDetail(null)}
+                  className="text-[#8ab4f8] hover:text-white p-1 rounded-full hover:bg-white/10 cursor-pointer shrink-0 ml-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 船只建造与状态概览 */}
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex justify-between items-center bg-[#092244]/70 px-2.5 py-1.5 rounded-lg border border-[#19426f]/60">
+                  <span className="text-[#8ab4f8]">建造阶段 / 进度:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#00e676] font-bold">{selectedShipDetail.phase}</span>
+                    <span className="text-[#00e5ff] font-mono font-bold">{selectedShipDetail.progress}%</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  <div className="bg-[#092244]/60 rounded-lg p-1.5 border border-[#19426f]/40 text-center">
+                    <div className="text-[10px] text-[#8ab4f8]">在岗工人</div>
+                    <div className="text-xs font-mono font-bold text-[#00d2ff] mt-0.5">{selectedShipDetail.totalPersonnel}人</div>
+                  </div>
+                  <div className="bg-[#092244]/60 rounded-lg p-1.5 border border-[#19426f]/40 text-center">
+                    <div className="text-[10px] text-[#8ab4f8]">在线设备</div>
+                    <div className="text-xs font-mono font-bold text-[#00e676] mt-0.5">{selectedShipDetail.deviceCount || 48}台</div>
+                  </div>
+                  <div className="bg-[#092244]/60 rounded-lg p-1.5 border border-[#19426f]/40 text-center">
+                    <div className="text-[10px] text-[#8ab4f8]">告警事件</div>
+                    <div className="text-xs font-mono font-bold text-[#ff1744] mt-0.5">{selectedShipDetail.alarmCount || 0}起</div>
+                  </div>
+                </div>
+
+                {selectedShipDetail.client && (
+                  <div className="flex justify-between items-center text-[10px] pt-1">
+                    <span className="text-[#8ab4f8]">委托客户:</span>
+                    <span className="text-white font-medium truncate max-w-[170px]">{selectedShipDetail.client}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 底部操作栏 */}
+              <div className="mt-2.5 pt-2 border-t border-[#1f4a7c]/60 flex items-center justify-between">
+                <span className="text-[10px] text-[#8ab4f8]">
+                  {viewScope === 'yard' ? '全景锚定泊位' : '当前全船3D孪生'}
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedProjectId(selectedShipDetail.id);
+                    setViewScope('project');
+                    setSelectedShipDetail(null);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-[0_0_10px_rgba(0,210,255,0.4)] cursor-pointer"
+                >
+                  进入该船3D孪生
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 🚨 告警明显提示窗 (触发告警时弹出) */}
         {activeAlarmModalData && (
           <div 
@@ -3154,27 +3649,30 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
               <div className="grid grid-cols-2 md:grid-cols-6 gap-2.5 mb-4 shrink-0">
                 <div className="bg-[#0b2447]/80 border border-[#1f4a7c] p-2.5 rounded-2xl flex flex-col justify-between">
                   <div className="text-[11px] text-[#8ab4f8]">今日告警总量</div>
-                  <div className="text-xl font-bold font-mono text-white mt-1">{currentAlerts.length} <span className="text-xs text-[#8ab4f8] font-normal">起</span></div>
+                  <div className="text-xl font-bold font-mono text-white mt-1">{todayAlertCount} <span className="text-xs text-[#8ab4f8] font-normal">起</span></div>
                 </div>
                 <div className="bg-red-950/40 border border-red-500/50 p-2.5 rounded-2xl flex flex-col justify-between">
                   <div className="text-[11px] text-red-300 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-                    <span>待处置警情报</span>
+                    <span>未处理告警数</span>
                   </div>
                   <div className="text-xl font-bold font-mono text-red-400 mt-1">
-                    {currentAlerts.filter(a => a.status === 'pending').length} <span className="text-xs text-red-300/80 font-normal">起</span>
+                    {unhandledAlertCount} <span className="text-xs text-red-300/80 font-normal">起</span>
+                  </div>
+                </div>
+                <div className="bg-emerald-950/30 border border-emerald-500/40 p-2.5 rounded-2xl flex flex-col justify-between">
+                  <div className="text-[11px] text-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>已处理告警数</span>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
+                    {handledAlertCount} <span className="text-xs text-emerald-300/80 font-normal">起</span>
                   </div>
                 </div>
                 <div className="bg-amber-950/30 border border-amber-500/40 p-2.5 rounded-2xl flex flex-col justify-between">
                   <div className="text-[11px] text-amber-300">处置响应中</div>
                   <div className="text-xl font-bold font-mono text-amber-400 mt-1">
                     {currentAlerts.filter(a => a.status === 'handling').length} <span className="text-xs text-amber-300/80 font-normal">起</span>
-                  </div>
-                </div>
-                <div className="bg-emerald-950/30 border border-emerald-500/40 p-2.5 rounded-2xl flex flex-col justify-between">
-                  <div className="text-[11px] text-emerald-300">已闭环解除</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
-                    {currentAlerts.filter(a => a.status === 'resolved').length} <span className="text-xs text-emerald-300/80 font-normal">起</span>
                   </div>
                 </div>
                 <div className="bg-[#0b2447]/80 border border-cyan-500/40 p-2.5 rounded-2xl flex flex-col justify-between">
@@ -3242,9 +3740,9 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 </div>
               </div>
 
-              {/* 4. 全天告警信息表格列表 */}
+              {/* 4. 全天告警信息表格列表 (未处理告警排在前面，已处理排在后面) */}
               <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin scrollbar-thumb-[#1f4a7c]">
-                {currentAlerts
+                {sortedCurrentAlerts
                   .filter(alert => {
                     if (alarmCategoryFilter === 'all') return true;
                     return alert.category === alarmCategoryFilter;
@@ -3431,8 +3929,8 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
         className="relative z-40 h-[82px] flex items-start justify-between px-6 pt-2 bg-gradient-to-b from-[#031326]/95 via-[#031326]/60 to-transparent shrink-0 cursor-default"
       >
         
-        {/* 左侧：仅保留「返回系统」按钮 */}
-        <div className="flex items-center gap-3 pt-2 whitespace-nowrap shrink-0">
+        {/* 左侧：「返回系统」按钮与搜索查询输入框 */}
+        <div className="flex items-center gap-2.5 pt-2 whitespace-nowrap shrink-0">
           <button 
             onClick={() => {
               if (onExit) {
@@ -3447,6 +3945,97 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
             <LogOut className="w-3.5 h-3.5" />
             <span className="font-medium whitespace-nowrap">返回系统</span>
           </button>
+
+          {/* 综合类型搜索框：支持人员、设备、区域、船只 */}
+          <div className="relative flex items-center bg-[#071d3d]/90 border border-[#1f4a7c] focus-within:border-[#00d2ff] rounded-full p-0.5 shadow-[inset_0_0_8px_rgba(0,0,0,0.4),0_0_10px_rgba(0,210,255,0.15)] transition-all">
+            {/* 搜索类型下拉选择器 */}
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSearchTypeDropdownOpen(prev => !prev);
+                }}
+                className="flex items-center gap-1 bg-[#0b2b52] hover:bg-[#0f386b] text-[#00d2ff] px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer select-none"
+                title="切换搜索目标分类"
+              >
+                {searchTargetType === 'personnel' && <Users className="w-3 h-3" />}
+                {searchTargetType === 'device' && <Cpu className="w-3 h-3" />}
+                {searchTargetType === 'area' && <ShieldAlert className="w-3 h-3" />}
+                {searchTargetType === 'ship' && <Ship className="w-3 h-3" />}
+                <span>
+                  {searchTargetType === 'personnel' ? '人员' :
+                   searchTargetType === 'device' ? '设备' :
+                   searchTargetType === 'area' ? '区域' : '船只'}
+                </span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isSearchTypeDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* 下拉菜单 */}
+              {isSearchTypeDropdownOpen && (
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-full mt-1.5 left-0 w-28 bg-[#061833]/98 border border-[#00d2ff] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.85),0_0_16px_rgba(0,210,255,0.3)] py-1 z-50 animate-fadeIn backdrop-blur-xl select-none"
+                >
+                  {[
+                    { type: 'personnel' as SearchTargetType, label: '人员', icon: Users },
+                    { type: 'device' as SearchTargetType, label: '设备', icon: Cpu },
+                    { type: 'area' as SearchTargetType, label: '区域', icon: ShieldAlert },
+                    { type: 'ship' as SearchTargetType, label: '船只', icon: Ship },
+                  ].map((opt) => (
+                    <button
+                      key={opt.type}
+                      type="button"
+                      onClick={() => {
+                        setSearchTargetType(opt.type);
+                        setIsSearchTypeDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between hover:bg-[#0f386b] cursor-pointer transition-colors ${
+                        searchTargetType === opt.type ? 'text-[#00e5ff] font-bold bg-[#00e5ff]/15' : 'text-[#8ab4f8]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <opt.icon className="w-3 h-3 text-[#00d2ff]" />
+                        <span>{opt.label}</span>
+                      </div>
+                      {searchTargetType === opt.type && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 输入框 */}
+            <input 
+              type="text" 
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch();
+                }
+              }}
+              placeholder={
+                searchTargetType === 'personnel' ? '输入姓名/工号/工种...' :
+                searchTargetType === 'device' ? '输入设备名称/编号/类型...' :
+                searchTargetType === 'area' ? '输入区域/围栏名称/编码...' :
+                '输入船名/船型/工程代号...'
+              }
+              className="bg-transparent border-none pl-2.5 pr-1.5 py-1 text-xs text-[#e2f1ff] focus:outline-none w-36 focus:w-48 transition-all placeholder-[#476582]"
+            />
+
+            {/* 搜索/回车按钮 */}
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="w-6 h-6 rounded-full bg-[#00d2ff]/15 hover:bg-[#00d2ff] text-[#00d2ff] hover:text-[#061833] flex items-center justify-center transition-all mr-0.5 cursor-pointer shrink-0"
+              title="按回车或点击定位搜索"
+            >
+              <Search className="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
         {/* 中间：标题与“厂区/造船项目”双视图切换栏 */}
@@ -3591,15 +4180,14 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                     <ChevronDown className={`w-3.5 h-3.5 text-[#00e5ff] transition-transform duration-200 ${isLevelDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* 模型分层选择下拉列表 */}
+                  {/* 模型分层选择下拉列表 (宽度自适应文本宽度) */}
                   {isLevelDropdownOpen && (
                     <div 
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute top-full mt-1.5 left-0 w-72 bg-[#061833]/95 border border-[#00e5ff] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-xl p-2 z-50 animate-fadeIn"
+                      className="absolute top-full mt-1.5 left-0 w-max min-w-full bg-[#061833]/95 border border-[#00e5ff] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-xl p-2 z-50 animate-fadeIn"
                     >
-                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2.5 py-1 uppercase tracking-wider border-b border-[#1f4a7c]/60 mb-1 flex items-center justify-between">
+                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2.5 py-1 uppercase tracking-wider border-b border-[#1f4a7c]/60 mb-1 flex items-center whitespace-nowrap">
                         <span>选择模型层次</span>
-                        <span className="text-[#00e5ff]">{currentProject.shipType} 3D分层</span>
                       </div>
 
                       <div className="space-y-1">
@@ -3612,27 +4200,22 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                                 setSelectedModelLevel(lvl.id);
                                 setIsLevelDropdownOpen(false);
                               }}
-                              className={`p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between ${
+                              className={`p-2 rounded-xl cursor-pointer transition-all flex items-center whitespace-nowrap ${
                                 isSelected
                                   ? 'bg-gradient-to-r from-[#00d2ff]/25 to-[#0c315e]/90 border border-[#00e5ff] shadow-[0_0_12px_rgba(0,229,255,0.3)]'
                                   : 'hover:bg-[#0b2447] border border-transparent hover:border-[#1f4a7c]'
                               }`}
                             >
-                              <div className="flex flex-col min-w-0 pr-2">
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex flex-col min-w-0 w-full whitespace-nowrap">
+                                <div className="flex items-center gap-1.5 whitespace-nowrap">
                                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lvl.color }}></span>
-                                  <span className={`text-xs font-bold truncate ${isSelected ? 'text-[#00e5ff]' : 'text-white'}`}>
+                                  <span className={`text-xs font-bold whitespace-nowrap ${isSelected ? 'text-[#00e5ff]' : 'text-white'}`}>
                                     {lvl.name}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-[#8ab4f8] mt-0.5 pl-3.5 truncate">
+                                <div className="text-[10px] text-[#8ab4f8] mt-0.5 pl-3.5 whitespace-nowrap">
                                   {lvl.description}
                                 </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <span className="text-[10px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 px-1.5 py-0.5 rounded border border-[#00e5ff]/20">
-                                  {lvl.elevation}
-                                </span>
                               </div>
                             </div>
                           );
@@ -3647,10 +4230,10 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
           </div>
         </div>
 
-        {/* 右侧：时间日期与天气、查询框、显隐面板切换、管理员标识 */}
+        {/* 右侧：时间日期与天气、「触发告警信息」按钮、全景模式按钮(仅图标)、管理员标识 */}
         <div className="flex justify-end items-center gap-3 pt-2 whitespace-nowrap shrink-0">
           
-          {/* 时间、日期与天气 (移至右上角) */}
+          {/* 时间、日期与天气 */}
           <div className="flex items-center text-[12px] text-[#8ab4f8] font-mono tracking-wide whitespace-nowrap">
             <span className="whitespace-nowrap">{formatDate(currentTime)}</span>
             <span className="ml-2.5 flex items-center text-[#00d2ff] whitespace-nowrap">
@@ -3658,19 +4241,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
             </span>
           </div>
 
-          {/* 搜索查询框 (移至右上角) */}
-          <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 text-[#00d2ff] absolute left-2.5 pointer-events-none" />
-            <input 
-              type="text" 
-              value={searchKey}
-              onChange={(e) => setSearchKey(e.target.value)}
-              placeholder="请输入关键词" 
-              className="bg-[#0b2447]/80 border border-[#1f4a7c] rounded-full pl-8 pr-2.5 py-1 text-xs text-[#e2f1ff] focus:outline-none focus:border-[#00d2ff] w-32 focus:w-36 transition-all placeholder-[#476582] shadow-[inset_0_0_8px_rgba(0,0,0,0.4)] whitespace-nowrap"
-            />
-          </div>
-
-          {/* 🚨 模拟触发告警测试按钮 */}
+          {/* 🚨 触发告警信息按钮 (与左侧查询框互换位置) */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -3689,30 +4260,29 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 status: 'pending'
               });
             }}
-            className="px-2.5 py-1 text-xs border border-red-500 bg-red-600/30 text-red-300 hover:bg-red-600 hover:text-white rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse"
+            className="px-3 py-1 text-xs border border-red-500 bg-red-600/30 text-red-300 hover:bg-red-600 hover:text-white rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse"
             title="触发紧急告警明显提示窗"
           >
             <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-            <span className="font-bold">触发告警测试</span>
+            <span className="font-bold">触发告警信息</span>
           </button>
 
           <div className="h-4 w-px bg-[#1f4a7c]/60"></div>
 
-          {/* 显隐面板切换浮动按钮 */}
+          {/* 全景模式按钮 (去掉文字，只保留图标) */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
               setIsPanelsVisible(!isPanelsVisible);
             }}
-            className={`px-2.5 py-1 text-xs border rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`w-7 h-7 flex items-center justify-center border rounded-full transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               isPanelsVisible 
                 ? 'border-[#1f4a7c] bg-[#0b2447]/70 text-[#8ab4f8] hover:text-white hover:border-[#00d2ff]' 
                 : 'border-[#00d2ff] bg-[#00d2ff]/20 text-[#00d2ff] animate-pulse shadow-[0_0_10px_rgba(0,210,255,0.4)]'
             }`}
-            title={isPanelsVisible ? "隐藏全部数据面板" : "显示全部数据面板"}
+            title={isPanelsVisible ? "全景模式 (隐藏全部数据面板)" : "显示全部数据面板"}
           >
             {isPanelsVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            <span>{isPanelsVisible ? '全景模式' : '显示面板'}</span>
           </button>
 
           {/* 管理员标识 */}
@@ -3997,9 +4567,9 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 </div>
               </div>
 
-              {/* 右侧3行状态卡片 */}
-              <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-                <div className="flex items-center justify-between bg-[#0b2447]/90 border border-[#1e4976]/80 px-2.5 py-1 rounded-xl whitespace-nowrap">
+              {/* 右侧2行状态卡片 */}
+              <div className="flex-1 flex flex-col justify-center gap-2 min-w-0">
+                <div className="flex items-center justify-between bg-[#0b2447]/90 border border-[#1e4976]/80 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
                   <div className="flex items-center gap-1.5 text-[11px] text-[#8ab4f8] whitespace-nowrap">
                     <div className="w-4 h-4 rounded-full bg-blue-600/30 flex items-center justify-center shrink-0">
                       <Users className="w-2.5 h-2.5 text-[#00d2ff]" />
@@ -4009,7 +4579,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                   <span className="font-mono text-[#00d2ff] font-bold text-sm whitespace-nowrap ml-1">{currentOnDuty}</span>
                 </div>
 
-                <div className="flex items-center justify-between bg-[#0b2447]/90 border border-[#1e4976]/80 px-2.5 py-1 rounded-xl whitespace-nowrap">
+                <div className="flex items-center justify-between bg-[#0b2447]/90 border border-[#1e4976]/80 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
                   <div className="flex items-center gap-1.5 text-[11px] text-[#8ab4f8] whitespace-nowrap">
                     <div className="w-4 h-4 rounded-full bg-amber-500/30 flex items-center justify-center shrink-0">
                       <User className="w-2.5 h-2.5 text-[#ffb300]" />
@@ -4018,43 +4588,46 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                   </div>
                   <span className="font-mono text-[#ffb300] font-bold text-sm whitespace-nowrap ml-1">{currentOffDuty}</span>
                 </div>
-
-                <div className="flex items-center justify-between bg-[#0b2447]/90 border border-[#1e4976]/80 px-2.5 py-1 rounded-xl whitespace-nowrap">
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#8ab4f8] whitespace-nowrap">
-                    <div className="w-4 h-4 rounded-full bg-rose-500/30 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-2.5 h-2.5 text-[#ff1744]" />
-                    </div>
-                    <span className="whitespace-nowrap">今日报警人数</span>
-                  </div>
-                  <span className="font-mono text-[#ff1744] font-bold text-sm whitespace-nowrap ml-1">{currentAlarmCount}</span>
-                </div>
               </div>
             </div>
           </SciFiPanel>
 
-          {/* 左2: 人员分布统计 (厂区车间 / 船舱段分布) */}
+          {/* 左2: 当日累计班组分布 (流动条与数据区科技蓝风格统一) */}
           <SciFiPanel 
-            title={viewScope === 'yard' ? "人员区域分布统计" : "船体各舱段分布统计"}
+            title="当日累计班组分布"
             icon={<Layers className="w-3.5 h-3.5" />}
-            className="h-[200px]"
+            className="flex-1 min-h-[230px]"
           >
-            <div className="flex flex-col gap-1.5 h-full justify-center">
-              {currentDistribution.map((item, index) => (
-                <div key={index} className="flex items-center text-[11px] whitespace-nowrap">
-                  <div className="w-20 text-[#8ab4f8] shrink-0 whitespace-nowrap truncate">{item.name}</div>
-                  <div className="flex-1 h-2 bg-[#092244] mx-2 rounded-full overflow-hidden border border-[#19426f]">
-                    <div 
-                      className="h-full bg-gradient-to-r from-[#0077b6] to-[#00d2ff] rounded-full relative"
-                      style={{ width: `${(item.value / item.max) * 100}%` }}
-                    >
-                      <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-white rounded-full shadow-[0_0_6px_#fff]"></div>
+            <div className="flex flex-col gap-2 h-full overflow-y-auto pr-1 custom-scrollbar justify-start pt-1">
+              {currentDistribution.map((item, index) => {
+                const percent = Math.min(100, Math.max(6, (item.value / item.max) * 100));
+                return (
+                  <div key={index} className="flex items-center text-[11px] whitespace-nowrap bg-[#0b2447]/60 hover:bg-[#0f3466]/80 rounded-xl px-2.5 py-1.5 border border-[#1e4976]/60 transition-all group">
+                    <div className="flex items-center gap-1.5 w-24 shrink-0 whitespace-nowrap truncate">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00d2ff] shadow-[0_0_6px_#00d2ff] group-hover:scale-125 transition-transform shrink-0"></div>
+                      <span className="text-[#8ab4f8] group-hover:text-white truncate font-medium">{item.name}</span>
+                    </div>
+
+                    {/* 流动条样式与数据区统一 */}
+                    <div className="flex-1 h-2.5 bg-[#061833] mx-2 rounded-full overflow-hidden border border-[#19426f] shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)] relative p-[1px]">
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#0284c7] via-[#00a8e8] to-[#00d2ff] relative transition-all duration-500 shadow-[0_0_8px_rgba(0,210,255,0.7)]"
+                        style={{ width: `${percent}%` }}
+                      >
+                        {/* 流动微光脉冲 */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                        {/* 流光端部发光球 */}
+                        <div className="absolute right-0 top-0 bottom-0 w-2 bg-white rounded-full shadow-[0_0_8px_#ffffff,0_0_12px_#00d2ff]"></div>
+                      </div>
+                    </div>
+
+                    {/* 人数数据 */}
+                    <div className="w-12 text-right font-mono text-[#00d2ff] group-hover:text-white shrink-0 font-bold whitespace-nowrap">
+                      {item.value}<span className="text-[10px] text-[#8ab4f8] ml-0.5 font-normal">人</span>
                     </div>
                   </div>
-                  <div className="w-12 text-right font-mono text-[#e2f1ff] shrink-0 font-medium whitespace-nowrap">
-                    {item.value}<span className="text-[10px] text-[#8ab4f8] ml-0.5">人</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </SciFiPanel>
 
@@ -4062,7 +4635,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
           <SciFiPanel 
             title={viewScope === 'yard' ? "人员工种类型统计" : "船上工种类型统计"}
             icon={<Users className="w-3.5 h-3.5" />}
-            className="h-[165px]"
+            className="h-[175px] shrink-0"
           >
             <div className="flex items-center h-full">
               {/* 环形图 */}
@@ -4091,58 +4664,22 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
 
               {/* 图例 */}
               <div className="flex-1 flex flex-col gap-1.5 justify-center pl-2 min-w-0">
-                {currentTypeData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-[11px] whitespace-nowrap">
-                    <div className="flex items-center gap-1.5 text-[#8ab4f8] whitespace-nowrap">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
-                      <span className="whitespace-nowrap">{item.name}</span>
+                {currentTypeData.map((item, index) => {
+                  const count = item.count ?? Math.round((item.value / 100) * currentTotal);
+                  return (
+                    <div key={index} className="flex items-center justify-between text-[11px] whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-[#8ab4f8] whitespace-nowrap">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
+                        <span className="whitespace-nowrap">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-mono whitespace-nowrap ml-1">
+                        <span className="text-[#00d2ff] font-bold">{count}<span className="text-[10px] text-[#8ab4f8] font-normal ml-0.5">人</span></span>
+                        <span className="text-[#8ab4f8] text-[10px]">({item.value}%)</span>
+                      </div>
                     </div>
-                    <span className="font-mono text-[#e2f1ff] font-medium whitespace-nowrap ml-1">{item.value}%</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          </SciFiPanel>
-
-          {/* 左4: 人员状态趋势 (今日) */}
-          <SciFiPanel 
-            title="人员状态趋势 (今日)" 
-            icon={<Activity className="w-3.5 h-3.5" />}
-            extra={
-              <div className="flex items-center gap-2.5 text-[10px] whitespace-nowrap">
-                <div className="flex items-center gap-1 text-[#00e676] whitespace-nowrap">
-                  <div className="w-2 h-0.5 bg-[#00e676] rounded-full"></div> 在岗人数
-                </div>
-                <div className="flex items-center gap-1 text-[#ff1744] whitespace-nowrap">
-                  <div className="w-2 h-0.5 bg-[#ff1744] rounded-full"></div> 报警人数
-                </div>
-              </div>
-            }
-            className="flex-1 min-h-[150px]"
-          >
-            <div className="flex-1 h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={currentTrendData} margin={{ top: 8, right: 5, left: -22, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorOnDuty" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00e676" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#00e676" stopOpacity={0.0}/>
-                    </linearGradient>
-                    <linearGradient id="colorAlarmDuty" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff1744" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#ff1744" stopOpacity={0.0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#19426f" vertical={false} />
-                  <XAxis dataKey="time" stroke="#8ab4f8" fontSize={9} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#8ab4f8" fontSize={9} tickLine={false} axisLine={false} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: 'rgba(6, 24, 51, 0.95)', border: '1px solid #00d2ff', color: '#e2f1ff', borderRadius: '12px', fontSize: '11px' }} 
-                  />
-                  <Area type="monotone" dataKey="在岗人数" stroke="#00e676" fillOpacity={1} fill="url(#colorOnDuty)" strokeWidth={2} dot={{ r: 2, fill: '#00e676' }} />
-                  <Area type="monotone" dataKey="报警人数" stroke="#ff1744" fillOpacity={1} fill="url(#colorAlarmDuty)" strokeWidth={2} dot={{ r: 2, fill: '#ff1744' }} />
-                </AreaChart>
-              </ResponsiveContainer>
             </div>
           </SciFiPanel>
 
@@ -4151,43 +4688,8 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
         {/* ===================== 中间全景/船模交互与悬浮数据概览 ===================== */}
         <div className="flex-1 flex flex-col relative min-w-0 pointer-events-none">
           
-          {/* 中间上层浮动徽标与漫游控制 */}
+          {/* 中间上层漫游控制 */}
           <div className="flex-1 relative">
-            
-            {/* 视角为“造船项目”时的模型分层透视控制器 (已删除项目信息，提供底舱、中舱、甲板等分层信息选择) */}
-            {viewScope === 'project' && (
-              <div 
-                onClick={(e) => e.stopPropagation()} 
-                className="absolute top-3 left-3 bg-[#061833]/92 border border-[#00e5ff]/60 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.7),0_0_20px_rgba(0,229,255,0.25)] flex items-center gap-2 z-30 pointer-events-auto"
-              >
-                <div className="flex items-center gap-1.5 pr-2 border-r border-[#1f4a7c]/80">
-                  <Layers className="w-4 h-4 text-[#00e5ff]" />
-                  <span className="text-xs font-bold text-white whitespace-nowrap">模型分层</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {SHIP_MODEL_LEVELS.map((lvl) => {
-                    const isSelected = lvl.id === selectedModelLevel;
-                    return (
-                      <button
-                        key={lvl.id}
-                        onClick={() => setSelectedModelLevel(lvl.id)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-all duration-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-[#00d2ff]/30 to-[#0077b6]/50 border border-[#00e5ff] text-white font-bold shadow-[0_0_12px_rgba(0,229,255,0.35)]'
-                            : 'bg-[#092244]/50 border border-[#19426f]/60 text-[#8ab4f8] hover:text-white hover:border-[#00e5ff]/50'
-                        }`}
-                        title={`${lvl.name}: ${lvl.description} (${lvl.elevation})`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: lvl.color }}></span>
-                        <span>{lvl.shortName}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* 隐藏数据面板状态下的全景漫游提示气泡 */}
             {!isPanelsVisible && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#061833]/90 border border-[#00d2ff] backdrop-blur-md px-5 py-2 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.4)] flex items-center gap-2.5 text-sm text-[#e2f1ff] animate-bounce z-30 pointer-events-auto">
@@ -4218,68 +4720,70 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <Activity className="w-3.5 h-3.5 text-[#00d2ff] shrink-0" />
                 <span className="text-xs font-bold text-[#e2f1ff] tracking-wider whitespace-nowrap">
-                  {viewScope === 'yard' ? '厂区今日数据概览' : `${currentProject.name} 建造指标概览`}
+                  {viewScope === 'yard' ? '厂区今日数据概览' : `${currentProject.name} 今日数据概览`}
                 </span>
-              </div>
-              <div className="flex gap-1 opacity-70">
-                <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full"></div>
-                <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full"></div>
-                <div className="w-1.5 h-1.5 bg-[#00d2ff] rounded-full"></div>
               </div>
             </div>
 
-            {/* 6大指标 (每个都是圆角卡片，根据所选视图动态计算) */}
-            <div className="grid grid-cols-6 divide-x divide-[#1f4a7c]/60 pt-0.5">
+            {/* 数据概览维度列表 (厂区4维度 / 项目5维度) */}
+            <div className={`grid ${viewScope === 'yard' ? 'grid-cols-4' : 'grid-cols-5'} divide-x divide-[#1f4a7c]/60 pt-0.5`}>
               {(viewScope === 'yard' ? [
                 { 
-                  label: '人员总数', 
-                  value: '1284', 
-                  change: '+5.2%', 
-                  isUp: true, 
+                  label: '在岗人数', 
+                  value: `${currentOnDuty.toLocaleString()} 人`, 
                   icon: Users,
                   iconBg: 'bg-blue-600/30 text-[#00d2ff] border-blue-500/40' 
                 },
                 { 
-                  label: '在岗人数', 
-                  value: '1248', 
-                  change: '+6.1%', 
-                  isUp: true, 
-                  icon: User,
-                  iconBg: 'bg-blue-600/30 text-[#00d2ff] border-blue-500/40' 
-                },
-                { 
-                  label: '预警次数', 
-                  value: '8', 
-                  change: '-11.1%', 
-                  isUp: false, 
-                  icon: AlertTriangle,
-                  iconBg: 'bg-amber-500/30 text-[#ffb300] border-amber-500/40' 
-                },
-                { 
-                  label: '设备总数', 
-                  value: '512', 
-                  change: '+2.0%', 
-                  isUp: true, 
+                  label: '安装设备数', 
+                  value: `${currentDeviceSummary.total} 台`, 
                   icon: Cpu,
                   iconBg: 'bg-cyan-500/30 text-[#00d2ff] border-cyan-500/40' 
                 },
                 { 
-                  label: '在线设备', 
-                  value: '485', 
-                  change: '+3.6%', 
-                  isUp: true, 
-                  icon: Activity,
+                  label: '电子围栏个数及事件数', 
+                  value: `${(YARD_ELECTRONIC_FENCES || []).length} 个 / 12 起`, 
+                  icon: ShieldAlert,
+                  iconBg: 'bg-amber-500/30 text-[#ffb300] border-amber-500/40' 
+                },
+                { 
+                  label: '告警信息数', 
+                  value: `${currentAlarmCount} 起`, 
+                  icon: Bell,
+                  iconBg: 'bg-red-500/30 text-[#ff1744] border-red-500/40' 
+                },
+              ] : [
+                { 
+                  label: '当前项目阶段信息', 
+                  value: `${currentProject.phase}`, 
+                  icon: Clock,
                   iconBg: 'bg-emerald-500/30 text-[#00e676] border-emerald-500/40' 
                 },
                 { 
-                  label: '生产区域覆盖率', 
-                  value: '98.6%', 
-                  change: '+0.8%', 
-                  isUp: true, 
-                  icon: Compass,
-                  iconBg: 'bg-indigo-500/30 text-[#8ab4f8] border-indigo-500/40' 
+                  label: '在岗人数', 
+                  value: `${currentOnDuty} 人`, 
+                  icon: Users,
+                  iconBg: 'bg-blue-600/30 text-[#00d2ff] border-blue-500/40' 
                 },
-              ] : currentProject.kpis).map((item, idx) => (
+                { 
+                  label: '安装设备数', 
+                  value: `${currentDeviceSummary.total} 台`, 
+                  icon: Cpu,
+                  iconBg: 'bg-cyan-500/30 text-[#00d2ff] border-cyan-500/40' 
+                },
+                { 
+                  label: '电子围栏个数及事件数', 
+                  value: `${(PROJECT_ELECTRONIC_FENCES[currentProject.id] || []).length || 3} 个 / ${currentProject.alerts.length} 起`, 
+                  icon: ShieldAlert,
+                  iconBg: 'bg-amber-500/30 text-[#ffb300] border-amber-500/40' 
+                },
+                { 
+                  label: '告警信息数', 
+                  value: `${currentProject.alarmPersonnel} 起`, 
+                  icon: Bell,
+                  iconBg: 'bg-red-500/30 text-[#ff1744] border-red-500/40' 
+                },
+              ]).map((item, idx) => (
                 <div key={idx} className="flex flex-col px-3 first:pl-1 last:pr-1 whitespace-nowrap min-w-0">
                   <div className="flex items-center gap-1.5 text-[11px] text-[#8ab4f8] whitespace-nowrap">
                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${item.iconBg}`}>
@@ -4288,7 +4792,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                     <span className="whitespace-nowrap truncate">{item.label}</span>
                   </div>
 
-                  <div className="text-lg font-bold font-mono text-[#e2f1ff] mt-1 tracking-tight whitespace-nowrap">
+                  <div className="text-base font-bold font-mono text-[#e2f1ff] mt-1 tracking-tight whitespace-nowrap truncate">
                     {item.value}
                   </div>
                 </div>
@@ -4310,49 +4814,61 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
             title={viewScope === 'yard' ? "实时告警信息" : `${currentProject.shipType}实时告警信息`}
             icon={<ShieldAlert className="w-3.5 h-3.5 text-[#ff1744]" />}
             extra={
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#00d2ff]/70">自动轮播中</span>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsAlarmListModalOpen(true);
-                  }}
-                  className="text-[11px] text-[#00d2ff] hover:text-white hover:underline cursor-pointer whitespace-nowrap bg-[#00d2ff]/10 hover:bg-[#00d2ff]/20 px-1.5 py-0.5 rounded border border-[#00d2ff]/30 transition-all flex items-center gap-0.5"
-                  title="查看今日全量告警信息列表"
-                >
-                  <span>更多</span>
-                  <span>&gt;</span>
-                </button>
-              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAlarmListModalOpen(true);
+                }}
+                className="text-[11px] text-[#00d2ff] hover:text-white hover:underline cursor-pointer whitespace-nowrap bg-[#00d2ff]/10 hover:bg-[#00d2ff]/20 px-1.5 py-0.5 rounded border border-[#00d2ff]/30 transition-all flex items-center gap-0.5"
+                title="查看今日全量告警信息列表"
+              >
+                <span>更多</span>
+                <span>&gt;</span>
+              </button>
             }
             className="h-[200px]"
           >
-            {/* 今日预警统计分类概览 */}
-            <div className="text-[11px] text-[#8ab4f8] mb-1.5 pb-1 border-b border-[#1f4a7c]/40 flex items-center justify-between whitespace-nowrap">
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <span>今日告警 <span className="text-[#ff1744] font-bold font-mono text-sm">{currentAlerts.length}</span> 起</span>
-                <span className="text-[10px] text-cyan-400 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/30">
-                  气体环境 {currentAlerts.filter(a => a.category === 'environment').length}
-                </span>
-                <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/30">
-                  人员违规 {currentAlerts.filter(a => a.category === 'person').length}
-                </span>
+            {/* 今日预警统计：改为三种数据统计（今日告警数、已处理数、未处理数） */}
+            <div className="text-[11px] mb-1.5 pb-1.5 border-b border-[#1f4a7c]/40 flex items-center justify-between whitespace-nowrap gap-1">
+              <div className="flex items-center gap-1">
+                <span className="text-[#8ab4f8]">今日告警:</span>
+                <span className="text-white font-bold font-mono text-xs">{todayAlertCount}</span>
+                <span className="text-[10px] text-[#8ab4f8]">起</span>
+              </div>
+              <div className="flex items-center gap-1 bg-red-950/60 px-1.5 py-0.5 rounded-md border border-red-500/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+                <span className="text-red-300 text-[10px]">未处理:</span>
+                <span className="text-red-400 font-bold font-mono text-xs">{unhandledAlertCount}</span>
+                <span className="text-[9px] text-red-300/70">起</span>
+              </div>
+              <div className="flex items-center gap-1 bg-emerald-950/50 px-1.5 py-0.5 rounded-md border border-emerald-500/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                <span className="text-emerald-300 text-[10px]">已处理:</span>
+                <span className="text-emerald-400 font-bold font-mono text-xs">{handledAlertCount}</span>
+                <span className="text-[9px] text-emerald-300/70">起</span>
               </div>
             </div>
 
-            {/* 告警自动轮播列表 (支持有害气体环境异常与人员违规) */}
+            {/* 告警自动轮播列表 (未处理告警按严重程度与时间优先固定排在前面，已处理告警排在后面) */}
             <div 
               ref={alertsScrollRef}
               onMouseEnter={() => setIsAlertsHovered(true)}
               onMouseLeave={() => setIsAlertsHovered(false)}
               className="flex-1 overflow-y-auto space-y-1.5 pr-0.5 scrollbar-thin scrollbar-thumb-[#1f4a7c] scroll-smooth"
             >
-              {currentAlerts.map((alert, idx) => {
+              {sortedCurrentAlerts.map((alert, idx) => {
                 const isEnv = alert.category === 'environment';
+                const isResolved = alert.status === 'resolved';
                 return (
                   <div 
                     key={alert.id || idx} 
-                    className="flex items-center text-[11px] py-1 px-2 bg-[#0b2447]/60 hover:bg-[#0f3466]/90 rounded-xl border border-[#1a4473]/50 hover:border-red-500/50 transition-colors whitespace-nowrap cursor-pointer group"
+                    className={`flex items-center text-[11px] py-1 px-2 rounded-xl border transition-colors whitespace-nowrap cursor-pointer group ${
+                      isResolved 
+                        ? 'bg-[#081d3a]/50 hover:bg-[#0b2447] border-[#1a4473]/40 opacity-75' 
+                        : alert.dangerLevel === 'high'
+                        ? 'bg-[#0b2447]/90 hover:bg-[#0f3466] border-red-500/40 hover:border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.15)]'
+                        : 'bg-[#0b2447]/90 hover:bg-[#0f3466] border-amber-500/40 hover:border-amber-500'
+                    }`}
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveAlarmModalData({
@@ -4371,18 +4887,31 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                       });
                     }}
                   >
-                    {/* 分类小图标与呼吸灯 */}
-                    {isEnv ? (
+                    {/* 分类小图标与状态指示 */}
+                    {isResolved ? (
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400 mr-1 shrink-0" />
+                    ) : isEnv ? (
                       <Wind className="w-3 h-3 text-cyan-400 mr-1 shrink-0 animate-pulse" />
                     ) : (
                       <Bell className="w-3 h-3 text-[#ff1744] mr-1 shrink-0 animate-bounce" />
                     )}
 
-                    {/* 类别微标签 */}
+                    {/* 状态徽章：未处理 / 已处理 */}
                     <span className={`text-[9px] px-1 py-0.2 rounded mr-1 font-bold shrink-0 ${
+                      isResolved
+                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+                        : alert.dangerLevel === 'high'
+                        ? 'bg-red-950 text-red-300 border border-red-500/50'
+                        : 'bg-amber-950 text-amber-300 border border-amber-500/50'
+                    }`}>
+                      {isResolved ? '已处理' : '未处理'}
+                    </span>
+
+                    {/* 类别微标签 */}
+                    <span className={`text-[9px] px-1 py-0.2 rounded mr-1 font-medium shrink-0 ${
                       isEnv 
-                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/40' 
-                        : 'bg-rose-950 text-rose-300 border border-rose-500/40'
+                        ? 'bg-cyan-950/70 text-cyan-300 border border-cyan-500/30' 
+                        : 'bg-indigo-950/70 text-indigo-300 border border-indigo-500/30'
                     }`}>
                       {isEnv ? '环境' : '人员'}
                     </span>
@@ -4396,7 +4925,9 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                     </span>
 
                     {/* 告警内容 */}
-                    <span className="flex-1 text-[#ffb300] group-hover:text-white truncate px-1 whitespace-nowrap font-medium" title={alert.reason}>
+                    <span className={`flex-1 truncate px-1 whitespace-nowrap font-medium ${
+                      isResolved ? 'text-slate-300' : 'text-[#ffb300] group-hover:text-white'
+                    }`} title={alert.reason}>
                       {alert.reason}
                     </span>
 
@@ -4410,11 +4941,49 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
             </div>
           </SciFiPanel>
 
-          {/* 右2: 定位设备总览 */}
+          {/* 右2: 近7日告警趋势 (右上角“人员与环境事件合计数字眼”已删除) */}
           <SciFiPanel 
-            title={viewScope === 'yard' ? "定位设备总览" : "船载监测设备总览"}
+            title="近7日告警趋势" 
+            icon={<TrendingUp className="w-3.5 h-3.5 text-[#ff1744]" />}
+            className="h-[185px] shrink-0"
+          >
+            <div className="flex-1 h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={currentAlarmTrendData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorAlarmTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ff1744" stopOpacity={0.45}/>
+                      <stop offset="95%" stopColor="#ff1744" stopOpacity={0.0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="2 2" stroke="#19426f" vertical={false} />
+                  <XAxis dataKey="day" stroke="#8ab4f8" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#8ab4f8" fontSize={9} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(6, 24, 51, 0.95)', border: '1px solid #ff1744', color: '#e2f1ff', borderRadius: '12px', fontSize: '11px' }}
+                    formatter={(value: any, name: any) => [`${value} 起`, name]}
+                    labelFormatter={(label: any) => `日期: ${label}`}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="告警总数" 
+                    stroke="#ff1744" 
+                    fillOpacity={1} 
+                    fill="url(#colorAlarmTotal)" 
+                    strokeWidth={2} 
+                    dot={{ r: 3, fill: '#ff1744', stroke: '#ffffff', strokeWidth: 1 }} 
+                    activeDot={{ r: 5, fill: '#ff1744', stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </SciFiPanel>
+
+          {/* 右3: 设备总览 */}
+          <SciFiPanel 
+            title="设备总览"
             icon={<Cpu className="w-3.5 h-3.5" />}
-            className="h-[250px]"
+            className="flex-1 min-h-[220px]"
           >
             {/* 上半部4个状态指标 (圆角小徽章) */}
             <div className="grid grid-cols-4 gap-1.5 pb-2 mb-1.5 border-b border-[#1f4a7c]/50">
@@ -4422,7 +4991,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 { label: '设备总数', value: currentDeviceSummary.total, color: 'text-[#00d2ff]', bg: 'border-[#00d2ff]/40 bg-[#00d2ff]/10', icon: Server },
                 { label: '在线设备', value: currentDeviceSummary.online, color: 'text-[#00e676]', bg: 'border-[#00e676]/40 bg-[#00e676]/10', icon: Activity },
                 { label: '离线设备', value: currentDeviceSummary.offline, color: 'text-[#8ab4f8]', bg: 'border-[#8ab4f8]/40 bg-[#8ab4f8]/10', icon: Radio },
-                { label: '故障设备', value: currentDeviceSummary.fault, color: 'text-[#ff1744]', bg: 'border-[#ff1744]/40 bg-[#ff1744]/10', icon: AlertTriangle },
+                { label: '在线率', value: `${((currentDeviceSummary.online / (currentDeviceSummary.total || 1)) * 100).toFixed(1)}%`, color: 'text-[#00e676]', bg: 'border-[#00e676]/40 bg-[#00e676]/10', icon: CheckCircle2 },
               ].map((stat, idx) => (
                 <div key={idx} className="flex flex-col items-center p-1.5 rounded-xl bg-[#0b2447]/60 border border-[#19426f] whitespace-nowrap min-w-0">
                   <div className={`w-6 h-6 rounded-full border flex items-center justify-center mb-0.5 shrink-0 ${stat.bg}`}>
@@ -4441,14 +5010,14 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={yardDeviceTypes}
+                      data={currentDeviceTypes}
                       innerRadius={26}
                       outerRadius={40}
                       paddingAngle={4}
                       dataKey="value"
                       stroke="none"
                     >
-                      {yardDeviceTypes.map((entry, index) => (
+                      {currentDeviceTypes.map((entry, index) => (
                         <Cell key={`cell-dev-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -4462,82 +5031,16 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
 
               {/* 图例 */}
               <div className="flex-1 flex flex-col gap-1.5 justify-center pl-1 min-w-0">
-                {yardDeviceTypes.map((item, index) => (
+                {currentDeviceTypes.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-[11px] whitespace-nowrap">
                     <div className="flex items-center gap-1.5 text-[#8ab4f8] whitespace-nowrap">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
                       <span className="whitespace-nowrap">{item.name}</span>
                     </div>
-                    <span className="font-mono text-[#e2f1ff] font-medium whitespace-nowrap ml-1">{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </SciFiPanel>
-
-          {/* 右3: 设备状态列表 (支持自动平滑轮播) */}
-          <SciFiPanel 
-            title="设备状态列表" 
-            icon={<Radio className="w-3.5 h-3.5" />}
-            extra={
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#00d2ff]/70">自动轮播中</span>
-                <button className="text-[11px] text-[#00d2ff] hover:underline cursor-pointer whitespace-nowrap">更多 &gt;</button>
-              </div>
-            }
-            className="flex-1 min-h-[160px]"
-          >
-            <div className="flex flex-col h-full">
-              {/* 表头 */}
-              <div className="flex text-[11px] text-[#557696] border-b border-[#1f4a7c]/60 pb-1 mb-1 font-medium px-2 whitespace-nowrap">
-                <div className="w-1/4 whitespace-nowrap">设备名称</div>
-                <div className="w-1/4 whitespace-nowrap">设备类型</div>
-                <div className="w-1/4 text-center whitespace-nowrap">状态</div>
-                <div className="w-1/4 text-right whitespace-nowrap">位置</div>
-              </div>
-
-              {/* 自动轮播表格数据行 */}
-              <div 
-                ref={devicesScrollRef}
-                onMouseEnter={() => setIsDevicesHovered(true)}
-                onMouseLeave={() => setIsDevicesHovered(false)}
-                className="flex-1 overflow-y-auto space-y-1 pr-0.5 scrollbar-thin scrollbar-thumb-[#1f4a7c] scroll-smooth"
-              >
-                {currentDeviceList.map((device, idx) => (
-                  <div 
-                    key={idx} 
-                    className="flex items-center text-[11px] py-1 px-2 hover:bg-[#0f3466]/60 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeviceLayer(true);
-                      setSelectedDeviceCategory('all');
-                      const matched = activeFilteredDevices.find(d => d.code === device.id || d.name.includes(device.id)) || {
-                        id: `DEV-LIST-${idx}`,
-                        name: `设备 ${device.id}`,
-                        category: 'work_station',
-                        categoryLabel: device.type,
-                        code: device.id,
-                        location: device.location,
-                        top: '40%',
-                        left: '50%',
-                        status: device.status === '正常' || device.status === '在线' ? 'online' : device.status === '故障' ? 'alarm' : 'offline',
-                        coverageRadius: 60,
-                        coverageColor: device.status === '正常' || device.status === '在线' ? '#38bdf8' : device.status === '故障' ? '#ff1744' : '#8ab4f8',
-                        battery: '92%',
-                        frequency: '2.4GHz UWB',
-                        power: '覆盖 50m',
-                        valueText: `监测状态: ${device.status}`
-                      };
-                      setSelectedDeviceDetail(matched);
-                    }}
-                  >
-                    <div className="w-1/4 text-[#e2f1ff] font-mono whitespace-nowrap truncate">{device.id}</div>
-                    <div className="w-1/4 text-[#8ab4f8] whitespace-nowrap truncate">{device.type}</div>
-                    <div className={`w-1/4 flex items-center justify-center gap-1 ${device.statusColor} whitespace-nowrap`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${device.dotColor} shrink-0`}></div>
-                      <span className="whitespace-nowrap">{device.status}</span>
+                    <div className="flex items-center gap-1.5 font-mono whitespace-nowrap ml-1">
+                      <span className="text-[#00d2ff] font-bold">{item.value}<span className="text-[10px] text-[#8ab4f8] font-normal ml-0.5">台</span></span>
+                      <span className="text-[#8ab4f8] text-[10px]">({item.percent}%)</span>
                     </div>
-                    <div className="w-1/4 text-right text-[#8ab4f8] whitespace-nowrap truncate">{device.location}</div>
                   </div>
                 ))}
               </div>
