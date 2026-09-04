@@ -27,6 +27,8 @@ import {
   Flame,
   Search,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Filter,
   Maximize2,
   Minimize2,
@@ -101,8 +103,16 @@ export function ProjectDetailModal({
   // 设备子视图筛选
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'positioning' | 'environmental' | 'alarm'>('all');
 
-  // 围栏子视图选中的围栏
+  // 围栏子视图选中的围栏与违规记录展开状态
   const [selectedFenceId, setSelectedFenceId] = useState<string | null>(null);
+  const [expandedFenceIds, setExpandedFenceIds] = useState<Record<string, boolean>>({});
+
+  const toggleFenceExpand = (fenceId: string) => {
+    setExpandedFenceIds(prev => ({
+      ...prev,
+      [fenceId]: !prev[fenceId]
+    }));
+  };
 
   // 告警子视图选中的策略
   const [selectedAlarmId, setSelectedAlarmId] = useState<string | null>(null);
@@ -415,10 +425,6 @@ export function ProjectDetailModal({
                   <div className="text-2xl font-bold font-mono text-slate-900">
                     {currentPhase.personnel.length} <span className="text-xs font-normal text-slate-500 font-sans">人</span>
                   </div>
-                  <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-                    <span>关联定位: <strong className="text-slate-800">{currentPhase.personnel.length}</strong></span>
-                    <span>触发告警: <strong className="text-rose-600">{currentPhase.personnel.filter(p => p.alertsCount > 0).length}</strong></span>
-                  </div>
                 </div>
 
                 <div 
@@ -433,10 +439,6 @@ export function ProjectDetailModal({
                   </div>
                   <div className="text-2xl font-bold font-mono text-emerald-600">
                     {currentPhase.devices.length} <span className="text-xs font-normal text-slate-500 font-sans">台套</span>
-                  </div>
-                  <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-                    <span>定位基站: <strong className="text-slate-800">{currentPhase.devices.filter(d => d.category === 'positioning').length}</strong></span>
-                    <span>环境传感: <strong className="text-emerald-700">{currentPhase.devices.filter(d => d.category === 'environmental').length}</strong></span>
                   </div>
                 </div>
 
@@ -453,10 +455,6 @@ export function ProjectDetailModal({
                   <div className="text-2xl font-bold font-mono text-amber-700">
                     {currentPhase.fences.length} <span className="text-xs font-normal text-slate-500 font-sans">处</span>
                   </div>
-                  <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-                    <span>安全网格: <strong className="text-slate-800">{currentPhase.fences.length}</strong></span>
-                    <span>违规事件: <strong className="text-rose-600">{currentPhase.fences.reduce((acc, f) => acc + f.events.length, 0)}</strong></span>
-                  </div>
                 </div>
 
                 <div 
@@ -471,10 +469,6 @@ export function ProjectDetailModal({
                   </div>
                   <div className="text-2xl font-bold font-mono text-rose-600">
                     {currentPhase.alarmPolicies.length} <span className="text-xs font-normal text-slate-500 font-sans">项</span>
-                  </div>
-                  <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-                    <span>触发告警日志: <strong className="text-rose-700">{currentPhase.alarmPolicies.reduce((acc, p) => acc + p.logs.length, 0)}</strong> 条</span>
-                    <span className="text-blue-600 font-medium">查看 →</span>
                   </div>
                 </div>
               </div>
@@ -894,10 +888,13 @@ export function ProjectDetailModal({
                       <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                         编码: {dev.code}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        在线正常
-                      </span>
+                      {/* 需求2：历史版本不显示状态；当前阶段仅定位基站显示在线状态 */}
+                      {currentPhase.status === 'active' && dev.category === 'positioning' && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          在线正常
+                        </span>
+                      )}
                     </div>
 
                     <h4 className="text-sm font-bold text-slate-900 mt-1">{dev.name}</h4>
@@ -961,32 +958,66 @@ export function ProjectDetailModal({
                             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                             本阶段围栏告警事件记录
                           </span>
-                          <span className="text-[11px] font-mono text-rose-600 font-bold">
-                            共 {fence.events.length} 次违规
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-rose-600 font-bold">
+                              违规次数: {fence.events.length} 次
+                            </span>
+                            {fence.events.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleFenceExpand(fence.id)}
+                                className="text-[11px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5 cursor-pointer bg-blue-50 px-2 py-0.5 rounded border border-blue-100 transition-colors"
+                              >
+                                {expandedFenceIds[fence.id] ? (
+                                  <>收起明细 <ChevronUp className="w-3 h-3" /></>
+                                ) : (
+                                  <>查看明细 <ChevronDown className="w-3 h-3" /></>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </h5>
 
-                        {fence.events.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {fence.events.map((evt) => (
-                              <div key={evt.id} className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200 text-xs">
-                                <div className="flex justify-between items-center">
-                                  <span className="font-bold text-rose-900">{evt.personName}</span>
-                                  <span className="font-mono text-[10px] text-slate-500">{evt.time}</span>
+                        {expandedFenceIds[fence.id] && (
+                          fence.events.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mt-2">
+                              {fence.events.map((evt) => (
+                                <div key={evt.id} className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200 text-xs">
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-rose-900">{evt.personName}</span>
+                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-medium border ${
+                                        evt.status === '已处置'
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                          : evt.status === '处置中'
+                                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                          : 'bg-slate-100 text-slate-600 border-slate-200'
+                                      }`}>
+                                        {evt.status}
+                                      </span>
+                                    </div>
+                                    <span className="font-mono text-[10px] text-slate-500 flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      {evt.time}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-700 mt-1 flex items-center justify-between">
+                                    <span>违规类型：<strong className="text-rose-700">{evt.eventType}</strong></span>
+                                    <span>处理人：<strong className="text-slate-800">{evt.handler}</strong></span>
+                                  </p>
+                                  {evt.notes && (
+                                    <p className="text-[10px] text-slate-600 bg-white/80 p-1.5 rounded mt-1 border border-rose-100/80">
+                                      <strong>处理结果与备注：</strong>{evt.notes}
+                                    </p>
+                                  )}
                                 </div>
-                                <p className="text-[11px] text-slate-700 mt-1">
-                                  违规类型：<strong className="text-rose-700">{evt.eventType}</strong> · 处置人：{evt.handler}
-                                </p>
-                                <p className="text-[10px] text-slate-500 bg-white/80 p-1.5 rounded mt-1 border border-rose-100">
-                                  {evt.notes}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-slate-50 rounded-xl text-center text-xs text-slate-400 border border-slate-100">
-                            ✨ 当前阶段此围栏未发生越界违规事件
-                          </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-slate-50 rounded-xl text-center text-xs text-slate-400 border border-slate-100 mt-2">
+                              ✨ 当前阶段此围栏未发生越界违规事件
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
@@ -996,7 +1027,7 @@ export function ProjectDetailModal({
             </div>
           )}
 
-          {/* TAB 5: 告警配置与审计日志 (需求8：不显示左侧生效告警策略规则，只展示事件日志流水) */}
+          {/* TAB 5: 告警配置与审计日志 */}
           {activeSubTab === 'alarms' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex justify-between items-center flex-wrap gap-3">
@@ -1011,7 +1042,7 @@ export function ProjectDetailModal({
                 </span>
               </div>
 
-              {/* 告警相关日志流水：单列全宽展示（需求8） */}
+              {/* 告警相关日志流水：单列全宽展示 */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
                 <h4 className="text-xs font-bold text-slate-800 flex items-center gap-2 mb-4">
                   <Clock className="w-4 h-4 text-slate-600" />
@@ -1027,21 +1058,35 @@ export function ProjectDetailModal({
                             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                             {log.content}
                           </span>
-                          <span className="font-mono text-[11px] text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{log.time}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              log.status === '已处理'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : log.status === '待处理'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {log.status}
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">{log.time}</span>
+                          </div>
                         </div>
                         
-                        <p className="text-[11px] text-slate-600">
-                          触发源：<strong className="text-slate-800">{log.triggerSource}</strong> · 责任处置人：<strong className="text-blue-700">{log.processor}</strong>
+                        <p className="text-[11px] text-slate-600 flex items-center justify-between">
+                          <span>触发源：<strong className="text-slate-800">{log.triggerSource}</strong></span>
+                          <span>处理人：<strong className="text-blue-700">{log.processor}</strong></span>
                         </p>
 
-                        <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 text-[11px] text-slate-700">
-                          <strong>处置措施与归档记录：</strong>{log.actionTaken}
-                        </div>
+                        {log.actionTaken && (
+                          <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 text-[11px] text-slate-700">
+                            <strong>处理结果与处置措施：</strong>{log.actionTaken}
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
                     <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-100">
-                      ✅ 当前阶段运行平稳，无历史告警日志需要处理。
+                      ✅ 当前阶段运行平稳，无历史告警日志记录。
                     </div>
                   )}
                 </div>
