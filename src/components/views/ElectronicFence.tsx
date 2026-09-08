@@ -47,7 +47,7 @@ interface ProjectConfig {
 }
 
 const PROJECTS_CONFIG: ProjectConfig[] = [
-  { id: 'yard', name: '东南造船厂 (厂区全景)', code: 'YARD-01', shipType: '厂区全貌', phase: '全区通览', progress: 100, bgImage: '/assets/船厂背景.jpeg' },
+  { id: 'yard', name: '东南造船厂 (厂区全景)', code: 'YARD-01', shipType: '厂区全貌', phase: '全区通览', progress: 100, bgImage: '/assets/船厂背景-宽屏版.jpg' },
   { id: 'PRJ-2026-LNG01', name: '17.4万m³ 薄膜型大型LNG船', code: 'HULL-LNG-174', shipType: 'LNG船', phase: '合拢焊接', progress: 45, bgImage: lngModelBg },
   { id: 'PRJ-2026-CTN02', name: '24000TEU 超大型集装箱船', code: 'HULL-CTN-240', shipType: '集装箱船', phase: '系泊试验', progress: 85, bgImage: containerModelBg },
   { id: 'PRJ-2026-VLCC03', name: '30万吨级 超大型原油船(VLCC)', code: 'HULL-VLCC-300', shipType: '原油船', phase: '密闭涂装', progress: 60, bgImage: tankerModelBg },

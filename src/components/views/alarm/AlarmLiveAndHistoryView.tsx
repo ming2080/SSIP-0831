@@ -423,13 +423,54 @@ export function AlarmLiveAndHistoryView({ onViewRulePolicy }: AlarmLiveAndHistor
           {/* 策略类型大类筛选：人员触发 vs 环境检测 */}
           <select 
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value as '' | 'person' | 'environment')}
+            onChange={(e) => {
+              const val = e.target.value as '' | 'person' | 'environment';
+              setFilterCategory(val);
+              if (val === 'person') {
+                setFilterDeviceType(''); // 切换到人员触发时重置设备类型
+              } else if (val === 'environment') {
+                setFilterDept(''); // 切换到环境检测时重置班组信息
+              } else {
+                setFilterDeviceType('');
+                setFilterDept('');
+              }
+            }}
             className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer font-medium"
           >
             <option value="">全部策略分类</option>
             <option value="person">人员触发</option>
             <option value="environment">环境检测</option>
           </select>
+
+          {/* 当策略分类为人员触发时，显示班组信息的过滤条件选择框 */}
+          {filterCategory === 'person' && (
+            <select 
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              className="px-2.5 py-1.5 text-xs border border-blue-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50/40 cursor-pointer max-w-[170px]"
+              title="按班组信息分类查询"
+            >
+              <option value="">全部班组信息</option>
+              {deptList.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          )}
+
+          {/* 当策略分类为环境检测时，显示设备类型过滤条件选择框 */}
+          {filterCategory === 'environment' && (
+            <select 
+              value={filterDeviceType}
+              onChange={(e) => setFilterDeviceType(e.target.value)}
+              className="px-2.5 py-1.5 text-xs border border-cyan-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-cyan-50/40 cursor-pointer max-w-[170px]"
+              title="按设备类型分类查询"
+            >
+              <option value="">全部设备类型</option>
+              {deviceTypeList.map(dtype => (
+                <option key={dtype} value={dtype}>{dtype}</option>
+              ))}
+            </select>
+          )}
 
           {/* 项目关联类型筛选：具体关联项目 vs 厂区范围内通用 */}
           <select 
@@ -440,32 +481,6 @@ export function AlarmLiveAndHistoryView({ onViewRulePolicy }: AlarmLiveAndHistor
             <option value="">全部关联类型</option>
             <option value="shipbuilding">具体关联项目</option>
             <option value="none">厂区范围内通用</option>
-          </select>
-
-          {/* 按设备类型分类查询 */}
-          <select 
-            value={filterDeviceType}
-            onChange={(e) => setFilterDeviceType(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer max-w-[155px]"
-            title="按设备类型分类查询"
-          >
-            <option value="">全部设备类型</option>
-            {deviceTypeList.map(dtype => (
-              <option key={dtype} value={dtype}>{dtype}</option>
-            ))}
-          </select>
-
-          {/* 按班组信息分类查询 */}
-          <select 
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer max-w-[165px]"
-            title="按班组信息分类查询"
-          >
-            <option value="">全部班组信息</option>
-            {deptList.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
           </select>
 
           <button 

@@ -154,7 +154,7 @@ export function BerthPicker({
           {/* 纯展示示意图片容器 */}
           <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-inner flex items-center justify-center">
             <img 
-              src="/assets/船厂背景.jpeg" 
+              src="/assets/船厂背景-宽屏版.jpg" 
               alt="东南造船厂厂区停泊位场景示意图" 
               className="w-full h-full object-cover object-center select-none pointer-events-none"
             />

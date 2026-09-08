@@ -426,7 +426,7 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
             /* 模式 A：船厂全景厂区 GIS 真实鸟瞰总图 */
             <div className="relative w-full h-full">
               <img 
-                src="/assets/船厂背景.jpeg" 
+                src="/assets/船厂背景-宽屏版.jpg" 
                 alt="船厂全景鸟瞰总图" 
                 className="w-full h-full object-cover opacity-85"
                 referrerPolicy="no-referrer"

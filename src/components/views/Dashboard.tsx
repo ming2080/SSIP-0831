@@ -2509,8 +2509,8 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
     setTimeout(() => setAlarmNoticeToast(null), 3500);
   };
 
-  // 动态获取当前背景图
-  const currentBackgroundImage = viewScope === 'yard' ? '/assets/船厂背景.jpeg' : currentProject.bgImage;
+  // 动态获取当前背景图 (使用最新上传的宽屏版素材，保持等比例与清晰度不拉伸)
+  const currentBackgroundImage = viewScope === 'yard' ? '/assets/船厂背景-宽屏版.jpg' : currentProject.bgImage;
 
   // 动态获取当前数据流
   const currentDistribution = viewScope === 'yard' ? yardDistributionData : currentProject.distributionData;
@@ -2619,6 +2619,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
           src={currentBackgroundImage} 
           alt={viewScope === 'yard' ? '智慧船厂全景' : currentProject.name} 
           className="w-full h-full min-h-screen object-cover object-center select-none animate-fadeIn transition-all duration-700 pointer-events-none"
+          style={{ imageRendering: '-webkit-optimize-contrast' }}
         />
         {/* 造船项目视角专属的科幻光栅与蓝图微光覆层 */}
         {viewScope === 'project' && (

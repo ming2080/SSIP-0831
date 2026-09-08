@@ -93,6 +93,45 @@ export function AlarmRecordDetailModal({
       }))
     : defaultUpgradePlans;
 
+  // 业务规则：所有响应均从低级开始，保留实际经历的响应升级过程；未上升到达的高阶级别不显示
+  const levelRank: Record<string, number> = { '低': 1, '中': 2, '高': 3 };
+  const currentRank = levelRank[record.currentLevel] || 1;
+
+  // 过滤出当前告警实际经历过的响应级别 (低级必有；达到中级则显示低+中；达到高级则显示低+中+高)
+  const activeUpgradePlans = upgradePlans.filter(p => (levelRank[p.level] || 1) <= currentRank);
+
+  // 业务规则：告警最终处理人只能有一个，高亮有且仅显示一个
+  const finalHandlerLevel = (() => {
+    if (!isClosed || !record.handler || record.handler === '-' || record.handler === '未处理') {
+      return null;
+    }
+    const h = record.handler.trim();
+
+    // 1. 优先在已激活的响应级别中，精准匹配处理人身份关键词
+    const highPlan = activeUpgradePlans.find(p => p.level === '高');
+    if (highPlan && (highPlan.target.includes(h) || h.includes('陈志强') || h.includes('总监') || h.includes('指挥部') || h.includes('安监'))) {
+      return '高';
+    }
+
+    const midPlan = activeUpgradePlans.find(p => p.level === '中');
+    if (midPlan && (midPlan.target.includes(h) || h.includes('林峰') || h.includes('车间') || h.includes('主任'))) {
+      return '中';
+    }
+
+    const lowPlan = activeUpgradePlans.find(p => p.level === '低');
+    if (lowPlan && (lowPlan.target.includes(h) || h.includes('班组长') || h.includes('安全员') || h.includes('张强') || h.includes('李伟') || h.includes('王建国'))) {
+      return '低';
+    }
+
+    // 2. 若未特异命中姓名，以处置闭环时的当前响应级别作为唯一的处理人所属级别
+    if (activeUpgradePlans.some(p => p.level === record.currentLevel)) {
+      return record.currentLevel;
+    }
+
+    // 3. 兜底为经历的最后一级
+    return activeUpgradePlans[activeUpgradePlans.length - 1]?.level || '低';
+  })();
+
   // 提取人员范围列表数据（匹配图片业务要素）
   const getPersonsList = () => {
     if (record.targetPerson && record.targetPerson !== '未知' && record.targetPerson !== '-') {
@@ -185,10 +224,135 @@ export function AlarmRecordDetailModal({
           </button>
         </div>
 
-        {/* 详情主体：严格分为三大板块（顺序：告警信息处理、告警级别升级情况、告警策略信息） */}
+        {/* 详情主体：四大板块（顺序：告警触发情况、告警信息处理、告警级别升级情况、告警策略信息） */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
 
-          {/* ======================= 1. 告警信息处理 ======================= */}
+          {/* ======================= 1. 告警触发情况 ======================= */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 sm:p-5 overflow-hidden">
+            {/* 标题：▌ 告警触发情况 */}
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="flex items-center gap-2">
+                <span className="w-1 h-3.5 bg-rose-500 rounded-xs inline-block" />
+                <h3 className="font-bold text-slate-900 text-xs tracking-wide">告警触发情况</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">起始触发级别:</span>
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                  低
+                </span>
+                {record.currentLevel !== '低' && (
+                  <>
+                    <span className="text-slate-300 text-[10px]">➔ 超时升级至</span>
+                    {getLevelBadge(record.currentLevel)}
+                  </>
+                )}
+                <span className="text-[11px] text-slate-300">|</span>
+                <span className="text-[11px] text-slate-400">持续时长:</span>
+                <span className="text-[11px] font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                  {record.durationStr || '持续中'}
+                </span>
+              </div>
+            </div>
+
+            {/* 触发关键指标网格/表格 */}
+            <div className="border border-slate-200 rounded-sm overflow-hidden text-xs">
+              <table className="w-full border-collapse text-left">
+                <tbody>
+                  {/* 第 1 行：触发时间、现场实测值/状态、安全阈值标准 */}
+                  <tr className="border-b border-slate-200">
+                    <td className="w-[13%] bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      触发时间
+                    </td>
+                    <td className="w-[20%] bg-white text-slate-800 px-3.5 py-2.5 border-r border-slate-200 font-mono font-medium">
+                      {record.triggerTime}
+                    </td>
+                    <td className="w-[12%] bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      现场实测值/状态
+                    </td>
+                    <td className="w-[20%] bg-white text-rose-600 px-3.5 py-2.5 border-r border-slate-200 font-semibold font-mono">
+                      {record.currentValue || '规则越限触发'}
+                    </td>
+                    <td className="w-[12%] bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      安全阈值标准
+                    </td>
+                    <td className="w-[23%] bg-white text-slate-800 px-3.5 py-2.5 font-medium font-mono">
+                      {record.thresholdValue || '-'}
+                    </td>
+                  </tr>
+
+                  {/* 第 2 行：发生区域位置、关联工程项目、触发判定条件 */}
+                  <tr className="border-b border-slate-200">
+                    <td className="bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      发生区域位置
+                    </td>
+                    <td className="bg-white text-slate-800 px-3.5 py-2.5 border-r border-slate-200">
+                      {record.areaName}
+                    </td>
+                    <td className="bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      关联工程项目
+                    </td>
+                    <td className="bg-white text-slate-800 px-3.5 py-2.5 border-r border-slate-200">
+                      {record.projectName ? record.projectName : '厂区范围内通用'}
+                    </td>
+                    <td className="bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      触发判定条件
+                    </td>
+                    <td className="bg-white text-slate-800 px-3.5 py-2.5">
+                      {record.conditionDesc}
+                    </td>
+                  </tr>
+
+                  {/* 第 3 行：触发关联主体 (环境检测设备 vs 涉事人员及所属班组) */}
+                  <tr>
+                    <td className="bg-slate-50 text-slate-600 px-3.5 py-2.5 font-medium border-r border-slate-200 whitespace-nowrap">
+                      触发关联主体
+                    </td>
+                    <td colSpan={5} className="bg-white text-slate-800 px-3.5 py-2.5">
+                      {record.deviceName ? (
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                          <div>
+                            <span className="text-slate-400">检测设备：</span>
+                            <span className="font-semibold text-slate-800">{record.deviceName}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">设备编号：</span>
+                            <span className="font-mono font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{record.deviceCode || '-'}</span>
+                          </div>
+                          {record.deviceType && (
+                            <div>
+                              <span className="text-slate-400">设备类型：</span>
+                              <span className="text-slate-700">{record.deviceType}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                          <div>
+                            <span className="text-slate-400">涉事人员：</span>
+                            <span className="font-semibold text-slate-800">{record.targetPerson || '作业人员'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">所属班组：</span>
+                            <span className="font-medium text-slate-700">{record.personDept || '-'}</span>
+                          </div>
+                          {record.personRole && (
+                            <div>
+                              <span className="text-slate-400">工种岗位：</span>
+                              <span className="text-slate-700">{record.personRole}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+          {/* ======================= 2. 告警信息处理 ======================= */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
             <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
@@ -312,108 +476,113 @@ export function AlarmRecordDetailModal({
           </div>
 
 
-          {/* ======================= 2. 告警级别升级情况 ======================= */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                <Layers className="w-4 h-4 text-amber-600" />
-                <span>告警级别升级情况</span>
-              </div>
-              <div>
-                {isClosed ? (
-                  <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    处置节点: [{record.currentLevel}] 级响应
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
-                    当前响应级别: [{record.currentLevel}] 级
-                  </span>
-                )}
-              </div>
+          {/* ======================= 3. 告警级别升级情况 ======================= */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 sm:p-5 overflow-hidden">
+            {/* 标题：▌ 告警级别升级情况 */}
+            <div className="flex items-center gap-2 mb-3.5">
+              <span className="w-1 h-3.5 bg-amber-500 rounded-xs inline-block" />
+              <h3 className="font-bold text-slate-900 text-xs tracking-wide">告警级别升级情况</h3>
             </div>
 
-            <div className="p-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {upgradePlans.map((plan, idx) => {
-                  // 判断是否为处理节点 (在已闭环状态下，该告警处于的级别即为处理节点)
-                  const isProcessNode = isClosed && plan.level === record.currentLevel;
-                  const isPendingCurrent = !isClosed && plan.level === record.currentLevel;
+            {/* 三等分区域显示 (即使只显示低级也固定占1/3区域) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+              {activeUpgradePlans.map((plan, idx) => {
+                // 确保有且仅有一个卡片高亮显示为最终处理人
+                const isFinalHandler = finalHandlerLevel === plan.level;
 
-                  return (
-                    <div 
-                      key={idx}
-                      className={`p-3.5 rounded-xl border transition-all relative ${
-                        isProcessNode
-                          ? 'bg-emerald-50/70 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
-                          : isPendingCurrent 
-                          ? 'bg-blue-50/50 border-blue-500 shadow-xs ring-2 ring-blue-500/15' 
-                          : 'bg-white border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {/* 处理节点高亮徽章 */}
-                      {isProcessNode && (
-                        <span className="absolute -top-2.5 right-3 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          处理节点 (已闭环)
-                        </span>
-                      )}
+                // 是否为历史已超时升级阶段
+                const isHistoricalStage = idx < activeUpgradePlans.length - 1;
+                // 是否为未闭环下的当前响应阶段
+                const isPendingCurrent = !isClosed && idx === activeUpgradePlans.length - 1;
 
-                      {/* 当前待处理级别徽章 */}
-                      {isPendingCurrent && (
-                        <span className="absolute -top-2.5 right-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
-                          当前响应级别
-                        </span>
-                      )}
+                return (
+                  <div 
+                    key={idx}
+                    className={`p-3.5 rounded-xl transition-all relative ${
+                      isFinalHandler
+                        ? 'bg-emerald-50/70 border-2 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                        : isPendingCurrent 
+                        ? 'bg-blue-50/40 border-2 border-blue-400 shadow-xs' 
+                        : isHistoricalStage
+                        ? 'bg-slate-50/80 border border-slate-200 text-slate-600'
+                        : 'bg-white border border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {/* 最终处理人高亮加框徽章 */}
+                    {isFinalHandler && (
+                      <span className="absolute -top-2.5 right-3 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 border border-emerald-400">
+                        <CheckCircle2 className="w-3 h-3" />
+                        告警最终处理人
+                      </span>
+                    )}
 
-                      {/* 仅保留要求的三项信息：告警等级、触发倒计时升级时间、通知对象 */}
-                      <div className="space-y-2.5 text-xs">
-                        {/* 1. 告警等级 */}
-                        <div>
-                          <span className="text-slate-400 block text-[11px] mb-1">告警等级</span>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2.5 py-0.5 rounded-md font-bold text-xs border ${
-                              plan.level === '高' 
-                                 ? 'bg-red-50 text-red-700 border-red-200' 
-                                : plan.level === '中' 
-                                ? 'bg-amber-50 text-amber-700 border-amber-200' 
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
-                              {plan.level} 级
+                    {/* 当前待响应级别徽章 */}
+                    {isPendingCurrent && (
+                      <span className="absolute -top-2.5 right-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs">
+                        当前响应级别
+                      </span>
+                    )}
+
+                    {/* 历史超时流转徽章 */}
+                    {isHistoricalStage && !isFinalHandler && (
+                      <span className="absolute -top-2.5 right-3 bg-slate-500 text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-2xs">
+                        已超时升级
+                      </span>
+                    )}
+
+                    {/* 升级框内三项信息：告警等级、触发倒计时升级时间、通知对象 */}
+                    <div className="space-y-2.5 text-xs">
+                      {/* 1. 告警等级 */}
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-1">告警等级</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-0.5 rounded-md font-bold text-xs border ${
+                            plan.level === '高' 
+                              ? 'bg-red-50 text-red-700 border-red-200' 
+                              : plan.level === '中' 
+                              ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}>
+                            {plan.level} 级
+                          </span>
+                          {isFinalHandler && (
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300">
+                              处置责任级别
                             </span>
-                            {isProcessNode && (
-                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-200/80">
-                                处置闭环节点
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 2. 触发倒计时升级时间 */}
-                        <div>
-                          <span className="text-slate-400 block text-[11px] mb-0.5">触发倒计时升级时间</span>
-                          <span className="font-semibold text-slate-800 font-mono text-xs block">
-                            {plan.countdown}
-                          </span>
-                        </div>
-
-                        {/* 3. 通知对象 */}
-                        <div>
-                          <span className="text-slate-400 block text-[11px] mb-0.5">通知对象</span>
-                          <span className="font-semibold text-slate-800 text-xs block">
-                            {plan.target}
-                          </span>
+                          )}
                         </div>
                       </div>
+
+                      {/* 2. 触发倒计时升级时间 */}
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">触发倒计时升级时间</span>
+                        <span className="font-semibold text-slate-800 font-mono text-xs block">
+                          {plan.countdown}
+                        </span>
+                      </div>
+
+                      {/* 3. 通知对象 */}
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">通知对象</span>
+                        <span className={`font-semibold text-xs block ${isFinalHandler ? 'text-emerald-900 font-bold' : 'text-slate-800'}`}>
+                          {plan.target}
+                        </span>
+                        {isFinalHandler && (
+                          <div className="mt-1.5 px-2 py-1 bg-emerald-100/90 rounded border border-emerald-300 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
+                            <span>✓ 最终处理人：</span>
+                            <span className="font-bold underline decoration-emerald-500">{record.handler || plan.target}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
 
-          {/* ======================= 3. 告警策略信息 ======================= */}
+          {/* ======================= 4. 告警策略信息 ======================= */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 sm:p-5 overflow-hidden">
             {/* 标题：▌ 告警策略信息 */}
             <div className="flex items-center gap-2 mb-3.5">
