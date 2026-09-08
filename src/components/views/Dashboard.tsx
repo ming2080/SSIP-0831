@@ -2126,7 +2126,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
 
   // 选中的造船项目3D模型层次 (如底舱、中舱、甲板等轮船分层信息)
   const [selectedModelLevel, setSelectedModelLevel] = useState<ShipModelLevel>('all');
-  const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
+  const [showModelLevelMenu, setShowModelLevelMenu] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchKey, setSearchKey] = useState('');
@@ -2629,6 +2629,37 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
       {/* ===================== 全画幅空间矢量标定图层 (全屏百分比对齐背景图) ===================== */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
         
+        {/* 🎯 造船项目视角下若选择了特定模型分层，显示在顶部视图切换栏下方的半透明科技风层级指示HUD (避免被视图切换遮挡，同时居于顶部中轴线正下方) */}
+        {viewScope === 'project' && selectedModelLevel !== 'all' && (
+          <div className="absolute top-[90px] left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-3 bg-[#061833]/92 border border-[#00e5ff]/80 px-4 py-1.5 rounded-full shadow-[0_4px_24px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.4)] backdrop-blur-md animate-fadeIn select-none">
+            <span 
+              className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse"
+              style={{ 
+                backgroundColor: SHIP_MODEL_LEVELS.find(l => l.id === selectedModelLevel)?.color || '#00e5ff',
+                boxShadow: `0 0 10px ${SHIP_MODEL_LEVELS.find(l => l.id === selectedModelLevel)?.color || '#00e5ff'}`
+              }}
+            />
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-[#8ab4f8]">当前3D模型分层:</span>
+              <span className="font-bold text-white">
+                {SHIP_MODEL_LEVELS.find(l => l.id === selectedModelLevel)?.name}
+              </span>
+            </div>
+            <div className="w-[1px] h-3 bg-[#1f4a7c]/80 mx-0.5" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedModelLevel('all');
+              }}
+              className="text-[11px] text-[#8ab4f8] hover:text-[#00e5ff] px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-[#00e5ff]/10 transition-colors cursor-pointer border border-[#1f4a7c]/60 hover:border-[#00e5ff]/60 flex items-center gap-1"
+              title="切换为全船透视"
+            >
+              <span>恢复全船透视</span>
+            </button>
+          </div>
+        )}
+
         {/* 1. 空间电子围栏多边形与工业作业状态浮标图层 (受 showFenceLayer 开关控制) */}
         {showFenceLayer && (
           <div className="absolute inset-0 pointer-events-none">
@@ -4079,6 +4110,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 onClick={(e) => {
                   e.stopPropagation();
                   setViewScope('project');
+                  setShowModelLevelMenu(true);
                 }}
                 className={`px-4 py-1 text-[12px] font-bold tracking-wider transition-all duration-300 rounded-full flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                   viewScope === 'project'
@@ -4091,7 +4123,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
               </button>
             </div>
 
-            {/* 当处于“造船项目”视图时，调取项目管理中的项目名称列表供实时切换 */}
+            {/* 当处于“造船项目”视图时，调取项目管理中的项目名称列表供实时切换 (模型分层选择已移至图层控制) */}
             {viewScope === 'project' && (
               <div className="flex items-center gap-2">
                 {/* 1. 项目选择器 */}
@@ -4100,7 +4132,6 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsProjectDropdownOpen(!isProjectDropdownOpen);
-                      setIsLevelDropdownOpen(false);
                     }}
                     className="flex items-center gap-2 bg-[#0a264a]/90 hover:bg-[#0f3466] border border-[#00d2ff]/80 px-3.5 py-1 rounded-full text-xs text-[#e2f1ff] shadow-[0_0_14px_rgba(0,210,255,0.35)] transition-all duration-200 cursor-pointer"
                   >
@@ -4153,69 +4184,6 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                               <div className="text-right shrink-0">
                                 <div className="text-[11px] font-mono font-bold text-[#00e676]">{prj.progress}%</div>
                                 <span className="text-[9px] text-[#557696]">{prj.phase}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. 选择项目后再选择项目的模型层次 (如底舱、中舱、甲板等) */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsLevelDropdownOpen(!isLevelDropdownOpen);
-                      setIsProjectDropdownOpen(false);
-                    }}
-                    className="flex items-center gap-2 bg-[#0a264a]/90 hover:bg-[#0f3466] border border-[#00e5ff]/80 px-3 py-1 rounded-full text-xs text-[#e2f1ff] shadow-[0_0_14px_rgba(0,229,255,0.3)] transition-all duration-200 cursor-pointer"
-                  >
-                    <Layers className="w-3 h-3 text-[#00e5ff]" />
-                    <span className="text-[#8ab4f8]">模型分层:</span>
-                    <span className="font-bold text-[#00e5ff]">
-                      {SHIP_MODEL_LEVELS.find(l => l.id === selectedModelLevel)?.shortName || '全船透视'}
-                    </span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-[#00e5ff] transition-transform duration-200 ${isLevelDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* 模型分层选择下拉列表 (宽度自适应文本宽度) */}
-                  {isLevelDropdownOpen && (
-                    <div 
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute top-full mt-1.5 left-0 w-max min-w-full bg-[#061833]/95 border border-[#00e5ff] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-xl p-2 z-50 animate-fadeIn"
-                    >
-                      <div className="text-[10px] font-bold text-[#8ab4f8] px-2.5 py-1 uppercase tracking-wider border-b border-[#1f4a7c]/60 mb-1 flex items-center whitespace-nowrap">
-                        <span>选择模型层次</span>
-                      </div>
-
-                      <div className="space-y-1">
-                        {SHIP_MODEL_LEVELS.map((lvl) => {
-                          const isSelected = lvl.id === selectedModelLevel;
-                          return (
-                            <div
-                              key={lvl.id}
-                              onClick={() => {
-                                setSelectedModelLevel(lvl.id);
-                                setIsLevelDropdownOpen(false);
-                              }}
-                              className={`p-2 rounded-xl cursor-pointer transition-all flex items-center whitespace-nowrap ${
-                                isSelected
-                                  ? 'bg-gradient-to-r from-[#00d2ff]/25 to-[#0c315e]/90 border border-[#00e5ff] shadow-[0_0_12px_rgba(0,229,255,0.3)]'
-                                  : 'hover:bg-[#0b2447] border border-transparent hover:border-[#1f4a7c]'
-                              }`}
-                            >
-                              <div className="flex flex-col min-w-0 w-full whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lvl.color }}></span>
-                                  <span className={`text-xs font-bold whitespace-nowrap ${isSelected ? 'text-[#00e5ff]' : 'text-white'}`}>
-                                    {lvl.name}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-[#8ab4f8] mt-0.5 pl-3.5 whitespace-nowrap">
-                                  {lvl.description}
-                                </div>
                               </div>
                             </div>
                           );
@@ -4308,7 +4276,7 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
           }`}
         >
           {/* 图层控制核心面板 */}
-          <div className="bg-[#061833]/92 border border-[#00d2ff]/40 rounded-2xl p-2 shadow-[0_12px_32px_rgba(0,0,0,0.7),0_0_20px_rgba(0,210,255,0.15)] backdrop-blur-xl flex flex-col gap-1.5 w-[122px]">
+          <div className="bg-[#061833]/92 border border-[#00d2ff]/40 rounded-2xl p-2 shadow-[0_12px_32px_rgba(0,0,0,0.7),0_0_20px_rgba(0,210,255,0.15)] backdrop-blur-xl flex flex-col gap-1.5 w-[130px]">
             {/* 面板头部 */}
             <div className="flex items-center justify-between pb-1 border-b border-[#1f4a7c]/60 px-1 mb-0.5">
               <div className="flex items-center gap-1 text-[10px] font-bold text-[#e2f1ff] tracking-wider">
@@ -4316,9 +4284,37 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                 <span>图层</span>
               </div>
               <span className="text-[8px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 px-1 py-0.2 rounded border border-[#00e5ff]/30">
-                {viewScope === 'yard' ? '全景' : '项目'}
+                {viewScope === 'yard' ? '全景' : '造船'}
               </span>
             </div>
+
+            {/* 0. 模型分层 (仅在造船项目视角 viewScope === 'project' 时显示) */}
+            {viewScope === 'project' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowModelLevelMenu(prev => !prev);
+                }}
+                className={`w-full px-2 py-1.5 rounded-xl border text-xs flex items-center justify-between gap-1 cursor-pointer transition-all duration-200 ${
+                  showModelLevelMenu || selectedModelLevel !== 'all'
+                    ? 'bg-gradient-to-r from-[#00d2ff]/25 to-[#0b2447]/90 border-[#00d2ff] text-white shadow-[0_0_12px_rgba(0,210,255,0.25)]' 
+                    : 'bg-[#0b2447]/40 border-[#1f4a7c]/60 text-[#8ab4f8] hover:border-[#00d2ff]/60 hover:text-white'
+                }`}
+                title="点击展开/切换造船项目3D模型分层"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Layers className={`w-3.5 h-3.5 shrink-0 ${showModelLevelMenu || selectedModelLevel !== 'all' ? 'text-[#00e5ff]' : 'text-[#8ab4f8]'}`} />
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className="font-medium whitespace-nowrap text-[11px] leading-tight">模型分层</span>
+                    <span className="text-[9px] text-[#00e5ff] font-bold truncate max-w-[54px]">
+                      {SHIP_MODEL_LEVELS.find(l => l.id === selectedModelLevel)?.shortName || '全船透视'}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-2 h-2 rounded-full shrink-0 ${selectedModelLevel !== 'all' ? 'bg-[#00e676] shadow-[0_0_6px_#00e676]' : 'bg-[#00e5ff]'}`} />
+              </button>
+            )}
 
             {/* 1. 人员 */}
             <button
@@ -4538,6 +4534,85 @@ export function Dashboard({ onExit, onNavigate }: DashboardProps) {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff] shadow-[0_0_6px_#00e5ff]"></span>
                 )}
               </button>
+            </div>
+          )}
+
+          {/* 🎯 当处于造船项目且展开模型分层时，在图层控制面板右侧弹出模型分层切换选择面板 */}
+          {viewScope === 'project' && showModelLevelMenu && (
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="bg-[#061833]/95 border border-[#00e5ff] rounded-2xl p-2.5 min-w-[245px] shadow-[0_12px_36px_rgba(0,0,0,0.85),0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-xl flex flex-col gap-1.5 animate-fadeIn z-50 whitespace-nowrap"
+            >
+              <div className="text-[11px] font-bold text-[#8ab4f8] px-2 py-1 border-b border-[#1f4a7c]/60 mb-1 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#00e5ff]" />
+                  <span className="text-white font-bold">造船项目模型分层</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowModelLevelMenu(false)}
+                  className="text-[#8ab4f8] hover:text-white p-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
+                  title="收起分层面板"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                {SHIP_MODEL_LEVELS.map((lvl) => {
+                  const isSelected = lvl.id === selectedModelLevel;
+                  return (
+                    <div
+                      key={lvl.id}
+                      onClick={() => {
+                        setSelectedModelLevel(lvl.id);
+                        setShowModelLevelMenu(false);
+                      }}
+                      className={`p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-[#00d2ff]/25 to-[#0c315e]/90 border border-[#00e5ff] shadow-[0_0_12px_rgba(0,229,255,0.3)] text-white'
+                          : 'hover:bg-[#0b2447] border border-transparent hover:border-[#1f4a7c] text-[#8ab4f8]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_8px_currentColor]" 
+                          style={{ backgroundColor: lvl.color, color: lvl.color }}
+                        ></span>
+                        <div className="flex flex-col">
+                          <span className={`text-xs font-bold ${isSelected ? 'text-[#00e5ff]' : 'text-[#e2f1ff]'}`}>
+                            {lvl.name}
+                          </span>
+                          <span className="text-[10px] text-[#8ab4f8]/80 mt-0.5">
+                            {lvl.elevation} · {lvl.description}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <CheckCircle2 className="w-4 h-4 text-[#00e5ff] shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 快捷重置按钮 */}
+              {selectedModelLevel !== 'all' && (
+                <div className="pt-1 mt-1 border-t border-[#1f4a7c]/40 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedModelLevel('all');
+                      setShowModelLevelMenu(false);
+                    }}
+                    className="text-[10px] text-[#00e5ff] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>恢复全船透视</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

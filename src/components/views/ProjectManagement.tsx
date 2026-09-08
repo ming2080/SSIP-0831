@@ -890,18 +890,20 @@ export function ProjectManagement() {
       />
 
       {/* 项目详情弹窗 */}
-      <ProjectDetailModal 
-        isOpen={!!detailProject} 
-        project={detailProject} 
-        onClose={() => setDetailProject(null)} 
-        onEdit={(proj) => {
-          setEditingProject(proj);
-          setIsCreateModalOpen(true);
-        }}
-        onOpenVersions={(projId) => {
-          setVersionsProjectId(projId);
-        }}
-      />
+      {detailProject && (
+        <ProjectDetailModal 
+          isOpen={true} 
+          project={detailProject} 
+          onClose={() => setDetailProject(null)} 
+          onEdit={(proj) => {
+            setEditingProject(proj);
+            setIsCreateModalOpen(true);
+          }}
+          onOpenVersions={(projId) => {
+            setVersionsProjectId(projId);
+          }}
+        />
+      )}
 
       {/* 版本阶段管理弹窗 */}
       <ProjectVersionsModal 

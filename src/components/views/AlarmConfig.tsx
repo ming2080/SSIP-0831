@@ -17,6 +17,7 @@ import {
 import { INITIAL_ALARM_RULES, AlarmRuleItem } from '@/src/data/alarmData';
 import { AlarmFormModal } from './AlarmFormModal';
 import { AlarmDetailModal } from './AlarmDetailModal';
+import { AlarmLiveAndHistoryView } from './alarm/AlarmLiveAndHistoryView';
 
 export function AlarmConfig() {
   const [activeTab, setActiveTab] = useState<'rules' | 'records'>('rules');
@@ -128,7 +129,7 @@ export function AlarmConfig() {
             onClick={() => setActiveTab('records')}
           >
             <List className="w-4 h-4 mr-2" />
-            实时与历史告警流水
+            告警日志信息与处理
           </button>
         </div>
 
@@ -396,72 +397,15 @@ export function AlarmConfig() {
           )}
 
           {activeTab === 'records' && (
-            <div className="flex flex-col h-full p-5 bg-white">
-              <div className="flex justify-between mb-3.5 gap-3 shrink-0">
-                <div className="flex gap-2">
-                  <select className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-700 outline-none shadow-2xs">
-                    <option>全部告警类型</option>
-                    <option>气体告警</option>
-                    <option>未佩戴安全帽</option>
-                    <option>进入危险区域</option>
-                    <option>受限空间滞留</option>
-                    <option>长时间静止</option>
-                  </select>
-                  <select className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-700 outline-none shadow-2xs">
-                    <option>全部级别</option>
-                    <option>高危</option>
-                    <option>中危</option>
-                    <option>低</option>
-                  </select>
-                  <input type="date" className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-700 outline-none shadow-2xs" />
-                </div>
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                  <input type="text" placeholder="搜索告警内容或人员..." className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 w-52 focus:outline-none focus:border-blue-500 shadow-2xs placeholder-slate-400" />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-                    <tr>
-                      <th className="py-2.5 px-3">发生时间</th>
-                      <th className="py-2.5 px-3">告警内容</th>
-                      <th className="py-2.5 px-3">级别</th>
-                      <th className="py-2.5 px-3">触发策略与版本</th>
-                      <th className="py-2.5 px-3">处理状态</th>
-                      <th className="py-2.5 px-3">处理人</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-mono text-slate-500">2026-08-28 10:42</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-800">刘强 (EMP-042) 闯入2号坞吊装禁区</td>
-                      <td className="py-2.5 px-3"><span className="text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded font-bold text-[11px]">高危</span></td>
-                      <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">V3</td>
-                      <td className="py-2.5 px-3"><span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full text-[11px] font-bold">待处理</span></td>
-                      <td className="py-2.5 px-3 text-slate-400">-</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-mono text-slate-500">2026-08-28 08:12</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-800">张伟 (EMP-015) 1号船台密闭液货舱气体浓度达 18 ppm</td>
-                      <td className="py-2.5 px-3"><span className="text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded font-bold text-[11px]">高危</span></td>
-                      <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">V2</td>
-                      <td className="py-2.5 px-3"><span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] font-bold">已处理</span></td>
-                      <td className="py-2.5 px-3 text-slate-600 font-medium">安全工程师-林峰</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-mono text-slate-500">2026-08-27 15:30</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-800">总装车间 3号作业区未佩戴安全帽违章</td>
-                      <td className="py-2.5 px-3"><span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-bold text-[11px]">中危</span></td>
-                      <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">V1</td>
-                      <td className="py-2.5 px-3"><span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] font-bold">已恢复</span></td>
-                      <td className="py-2.5 px-3 text-slate-500">系统自动告警消除</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <AlarmLiveAndHistoryView 
+              rules={rules}
+              onViewRulePolicy={(policyName, versionId) => {
+                const targetRule = rules.find(r => r.name === policyName);
+                if (targetRule) {
+                  handleOpenDetail(targetRule);
+                }
+              }}
+            />
           )}
         </div>
       </div>

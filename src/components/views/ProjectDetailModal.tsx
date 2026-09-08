@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, 
   Ship, 
@@ -68,12 +68,11 @@ export function ProjectDetailModal({
   onEdit, 
   onOpenVersions 
 }: ProjectDetailModalProps) {
-  if (!isOpen || !project) return null;
-
   // 获取该项目的阶段版本数据 (只包含历史阶段版本与当前阶段版本，不显示计划版本)
   const phaseList = useMemo(() => {
+    if (!project?.id) return [];
     return getProjectPhases(project.id).filter(p => p.status !== 'planned');
-  }, [project.id]);
+  }, [project?.id]);
 
   // 当前选中的阶段版本 (默认选中当前生效 active 的阶段，否则选第一个)
   const defaultVersionCode = useMemo(() => {
@@ -82,6 +81,12 @@ export function ProjectDetailModal({
   }, [phaseList]);
 
   const [selectedVersionCode, setSelectedVersionCode] = useState<string>(defaultVersionCode);
+
+  useEffect(() => {
+    if (defaultVersionCode) {
+      setSelectedVersionCode(defaultVersionCode);
+    }
+  }, [defaultVersionCode]);
   
   // 选中的阶段详情
   const currentPhase: ProjectPhaseVersionData = useMemo(() => {
@@ -163,6 +168,8 @@ export function ProjectDetailModal({
     if (deviceFilter === 'all') return currentPhase.devices;
     return currentPhase.devices.filter(d => d.category === deviceFilter);
   }, [currentPhase, deviceFilter]);
+
+  if (!isOpen || !project) return null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
