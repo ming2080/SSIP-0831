@@ -14,6 +14,8 @@ import { ViewType } from '@/src/types';
 interface SidebarProps {
   currentView: ViewType;
   onChangeView: (view: ViewType) => void;
+  currentUser?: { username: string; role: string; name: string };
+  onLogout?: () => void;
 }
 
 const navItems: { id: ViewType; label: string; icon: React.ElementType }[] = [
@@ -26,14 +28,21 @@ const navItems: { id: ViewType; label: string; icon: React.ElementType }[] = [
   { id: 'devices', label: '设备管理', icon: ServerCrash },
 ];
 
-export function Sidebar({ currentView, onChangeView }: SidebarProps) {
+export function Sidebar({ currentView, onChangeView, currentUser, onLogout }: SidebarProps) {
   return (
     <div className="w-44 h-screen bg-white text-slate-600 flex flex-col border-r border-slate-200 z-10 shadow-sm">
-      <div className="h-14 flex items-center px-4 border-b border-slate-200">
-        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center mr-2 italic shadow-sm">
-          <span className="text-white font-bold text-sm">S</span>
+      <div className="h-14 flex items-center px-3.5 border-b border-slate-200">
+        <div className="h-8 w-8 flex items-center justify-center mr-2 rounded-lg bg-blue-50/80 border border-blue-100 p-1 shrink-0">
+          <img 
+            src="/assets/extracted_logo.png" 
+            alt="Logo" 
+            className="w-full h-full object-contain"
+          />
         </div>
-        <h1 className="text-slate-800 font-bold text-sm tracking-tight truncate">智慧船厂</h1>
+        <div className="overflow-hidden">
+          <h1 className="text-slate-900 font-bold text-sm tracking-tight truncate leading-tight">智慧船厂</h1>
+          <div className="text-[9px] text-blue-600 font-medium tracking-wide">DIGITAL SHIPYARD</div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto py-4">
         <div className="px-4 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">功能模块</div>
@@ -55,12 +64,16 @@ export function Sidebar({ currentView, onChangeView }: SidebarProps) {
           ))}
         </nav>
       </div>
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-400 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>服务正常</span>
+
+      {/* 侧边栏底部系统状态 */}
+      <div className="p-2.5 border-t border-slate-200 bg-slate-50/70">
+        <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-medium text-slate-500">服务正常运行</span>
+          </div>
+          <span className="font-mono text-slate-400">V2.6 PRO</span>
         </div>
-        <span className="font-mono text-[10px]">V2.6</span>
       </div>
     </div>
   );

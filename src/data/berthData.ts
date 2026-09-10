@@ -58,67 +58,18 @@ export function isDateRangeOverlap(startA?: string, endA?: string, startB?: stri
   return startA <= endB && endA >= startB;
 }
 
-// 6 个可停泊区域的配置定义（严格按照用户规则与数据标准）
+// 6 个全新可停泊区域的配置定义（严格按照用户规则与数据标准）
 export const BERTH_AREAS: BerthAreaConfig[] = [
   {
     id: 'berth-1',
     code: 1,
-    name: '1号平船台',
-    shortName: '1号平船台',
-    category: 'berth_slipway',
-    categoryName: '平船台',
-    maxCapacity: 2,
-    ruleDescription: '可停泊 2 艘大船（亦可停泊小船）',
-    restrictionNote: '1号平船台支持2万吨级船体总装与分段合拢',
-    isSmallShipOnly: false,
-    rect: {
-      top: 85.8,
-      left: 44.0,
-      width: 44.5,
-      height: 4.2
-    },
-    labelPos: {
-      top: 87.8,
-      left: 77.0
-    },
-    slots: [
-      {
-        slotId: 'berth-1-slot-1',
-        slotNumber: 1,
-        slotName: '1号位',
-        allowedType: 'large_and_small',
-        allowedTypeLabel: '大船 / 小船',
-        isOccupied: true,
-        occupiedShip: {
-          id: 'PRJ-2026-LNG01',
-          name: '17.4万m³ 大型LNG船 1号舰',
-          shipType: '大型LNG船',
-          shipCode: 'HULL-LNG-174',
-          stage: '合拢焊接',
-          startDate: '2026-03-01',
-          endDate: '2026-10-31'
-        }
-      },
-      {
-        slotId: 'berth-1-slot-2',
-        slotNumber: 2,
-        slotName: '2号位',
-        allowedType: 'large_and_small',
-        allowedTypeLabel: '大船 / 小船',
-        isOccupied: false
-      }
-    ]
-  },
-  {
-    id: 'berth-2',
-    code: 2,
-    name: '2号码头',
-    shortName: '2号码头',
+    name: '1号码头（新码头）',
+    shortName: '1号码头（新码头）',
     category: 'berth_pier',
     categoryName: '移动码头',
     maxCapacity: 3,
-    ruleDescription: '可停泊 3 艘大船（亦可停泊小船）',
-    restrictionNote: '重型系泊码头，配置双侧重型缆桩与高压岸电',
+    ruleDescription: '共3个停泊位，可停3艘船。同一位置只可停一艘大船或一艘小船。',
+    restrictionNote: '1号码头（新码头）：深水综合舾装码头，配置重型岸吊与高压岸电，同一位置可停1艘大船或1艘小船',
     isSmallShipOnly: false,
     rect: {
       top: 0.8,
@@ -132,9 +83,26 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
     },
     slots: [
       {
-        slotId: 'berth-2-slot-1',
+        slotId: 'berth-1-slot-1',
         slotNumber: 1,
         slotName: '1号位',
+        allowedType: 'large_and_small',
+        allowedTypeLabel: '大船 / 小船',
+        isOccupied: true,
+        occupiedShip: {
+          id: 'PRJ-2026-CTN03',
+          name: '15000TEU 大型集装箱船',
+          shipType: '大型集装箱船',
+          shipCode: 'HULL-CTN-150',
+          stage: '系泊调试',
+          startDate: '2026-05-15',
+          endDate: '2027-02-28'
+        }
+      },
+      {
+        slotId: 'berth-1-slot-2',
+        slotNumber: 2,
+        slotName: '2号位',
         allowedType: 'large_and_small',
         allowedTypeLabel: '大船 / 小船',
         isOccupied: true,
@@ -150,24 +118,7 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
         }
       },
       {
-        slotId: 'berth-2-slot-2',
-        slotNumber: 2,
-        slotName: '2号位',
-        allowedType: 'large_and_small',
-        allowedTypeLabel: '大船 / 小船',
-        isOccupied: true,
-        occupiedShip: {
-          id: 'PRJ-2026-CTN03',
-          name: '15000TEU 集装箱船',
-          shipType: '大型集装箱船',
-          shipCode: 'HULL-CTN-150',
-          stage: '系泊调试',
-          startDate: '2026-05-15',
-          endDate: '2027-02-28'
-        }
-      },
-      {
-        slotId: 'berth-2-slot-3',
+        slotId: 'berth-1-slot-3',
         slotNumber: 3,
         slotName: '3号位',
         allowedType: 'large_and_small',
@@ -177,15 +128,47 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
     ]
   },
   {
+    id: 'berth-2',
+    code: 2,
+    name: '2号码头',
+    shortName: '2号码头',
+    category: 'berth_pier',
+    categoryName: '移动码头',
+    maxCapacity: 1,
+    ruleDescription: '共1个号位，只能停泊一艘小船。',
+    restrictionNote: '2号码头：专用小型泊位，仅限停泊1艘小船（如拖轮、工作艇、PSV等），严禁停泊大船',
+    isSmallShipOnly: true,
+    rect: {
+      top: 34.5,
+      left: 76.5,
+      width: 7.2,
+      height: 7.2
+    },
+    labelPos: {
+      top: 38.0,
+      left: 80.0
+    },
+    slots: [
+      {
+        slotId: 'berth-2-slot-1',
+        slotNumber: 1,
+        slotName: '1号位',
+        allowedType: 'small_only',
+        allowedTypeLabel: '仅限小船',
+        isOccupied: false
+      }
+    ]
+  },
+  {
     id: 'berth-3',
     code: 3,
-    name: '3号码头',
-    shortName: '3号码头',
+    name: '3号码头 (旧码头)',
+    shortName: '3号码头 (旧码头)',
     category: 'berth_pier',
     categoryName: '移动码头',
     maxCapacity: 2,
-    ruleDescription: '可停泊 2 艘大船（亦可停泊小船）',
-    restrictionNote: '水下舾装与管系试压核心深水泊位',
+    ruleDescription: '共2个停泊位，可停2艘船。同一位置只可停一艘大船或一艘小船。',
+    restrictionNote: '3号码头（旧码头）：水下舾装与管系试压深水作业区，共2个泊位，同一位置可停1艘大船或1艘小船',
     isSmallShipOnly: false,
     rect: {
       top: 42.8,
@@ -228,13 +211,13 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
   {
     id: 'berth-4',
     code: 4,
-    name: '4号码头',
-    shortName: '4号码头',
+    name: '4号码头 (浮动码头)',
+    shortName: '4号码头 (浮动码头)',
     category: 'berth_pier',
-    categoryName: '移动码头',
+    categoryName: '浮动码头',
     maxCapacity: 2,
-    ruleDescription: '可停泊 2 艘大船（亦可停泊小船）',
-    restrictionNote: '自适应潮位系泊码头',
+    ruleDescription: '共2个停泊位，可停2艘船。同一位置只可停一艘大船或一艘小船。',
+    restrictionNote: '4号码头（浮动码头）：自适应潮位系泊作业区，共2个泊位，同一位置可停1艘大船或1艘小船',
     isSmallShipOnly: false,
     rect: {
       top: 67.5,
@@ -277,31 +260,49 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
   {
     id: 'berth-5',
     code: 5,
-    name: '5号码头',
-    shortName: '5号码头',
-    category: 'berth_pier',
-    categoryName: '移动码头',
-    maxCapacity: 1,
-    ruleDescription: '可停泊 1 艘小船（仅限小船）',
-    restrictionNote: '专用小型泊位：仅限停泊1艘小型船只（如拖轮、工作艇等），大船不可停入',
-    isSmallShipOnly: true,
+    name: '2万吨船台',
+    shortName: '2万吨船台',
+    category: 'berth_slipway',
+    categoryName: '船台',
+    maxCapacity: 2,
+    ruleDescription: '可停泊两艘小船或1艘大船。当停1艘大船时不能再停其他船，如果停一艘小船时可再停一艘小船。',
+    restrictionNote: '2万吨船台：重型总装船台。停1艘大船时独占全船台（互斥锁定其他位）；停小船时最多可容纳2艘小船',
+    isSmallShipOnly: false,
     rect: {
-      top: 34.5,
-      left: 76.5,
-      width: 7.2,
-      height: 7.2
+      top: 85.8,
+      left: 44.0,
+      width: 44.5,
+      height: 4.2
     },
     labelPos: {
-      top: 38.0,
-      left: 80.0
+      top: 87.8,
+      left: 77.0
     },
     slots: [
       {
         slotId: 'berth-5-slot-1',
         slotNumber: 1,
-        slotName: '1号位',
-        allowedType: 'small_only',
-        allowedTypeLabel: '仅限小船',
+        slotName: '1号位 (总装主位)',
+        allowedType: 'large_and_small',
+        allowedTypeLabel: '大船(独占) / 小船',
+        isOccupied: true,
+        occupiedShip: {
+          id: 'PRJ-2026-LNG01',
+          name: '17.4万m³ 大型LNG船 1号舰',
+          shipType: '大型LNG船',
+          shipCode: 'HULL-LNG-174',
+          stage: '合拢焊接',
+          startDate: '2026-03-01',
+          endDate: '2026-10-31',
+          isSmallShip: false // 大船占用，导致2万吨船台互斥
+        }
+      },
+      {
+        slotId: 'berth-5-slot-2',
+        slotNumber: 2,
+        slotName: '2号位 (小船副位)',
+        allowedType: 'large_and_small',
+        allowedTypeLabel: '小船 / 大船(独占)',
         isOccupied: false
       }
     ]
@@ -309,13 +310,13 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
   {
     id: 'berth-6',
     code: 6,
-    name: '6号平船台',
-    shortName: '6号平船台',
+    name: '平船台',
+    shortName: '平船台',
     category: 'berth_slipway',
     categoryName: '平船台',
-    maxCapacity: 3,
-    ruleDescription: '最多停泊 2 艘大船 + 1 艘小船（共 3 个位置）',
-    restrictionNote: '大型平船台作业区：1号位与2号位可停大/小船，3号位仅限小船',
+    maxCapacity: 4,
+    ruleDescription: '共4个停泊位：a. 停泊4艘小船；b. 停泊2艘大船+2艘小船（注意：停泊出现2艘大船时只能并排停放）；c. 停泊1艘大船+3艘小船。',
+    restrictionNote: '平船台：共4个停泊位，支持三种灵活搭载组合（4小船 / 2大船并排+2小船 / 1大船+3小船）',
     isSmallShipOnly: false,
     rect: {
       top: 31.0,
@@ -331,9 +332,9 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
       {
         slotId: 'berth-6-slot-1',
         slotNumber: 1,
-        slotName: '1号位',
+        slotName: '1号位 (并排主位A)',
         allowedType: 'large_and_small',
-        allowedTypeLabel: '大船 / 小船',
+        allowedTypeLabel: '大船(并排) / 小船',
         isOccupied: true,
         occupiedShip: {
           id: 'PRJ-2026-BULK04',
@@ -342,23 +343,32 @@ export const BERTH_AREAS: BerthAreaConfig[] = [
           shipCode: 'HULL-BULK-082',
           stage: '船台搭载',
           startDate: '2026-06-15',
-          endDate: '2027-01-20'
+          endDate: '2027-01-20',
+          isSmallShip: false
         }
       },
       {
         slotId: 'berth-6-slot-2',
         slotNumber: 2,
-        slotName: '2号位',
+        slotName: '2号位 (并排主位B)',
         allowedType: 'large_and_small',
-        allowedTypeLabel: '大船 / 小船',
+        allowedTypeLabel: '大船(并排) / 小船',
         isOccupied: false
       },
       {
         slotId: 'berth-6-slot-3',
         slotNumber: 3,
-        slotName: '3号位',
-        allowedType: 'small_only',
-        allowedTypeLabel: '仅限小船',
+        slotName: '3号位 (合拢工位C)',
+        allowedType: 'large_and_small',
+        allowedTypeLabel: '大船 / 小船',
+        isOccupied: false
+      },
+      {
+        slotId: 'berth-6-slot-4',
+        slotNumber: 4,
+        slotName: '4号位 (搭载工位D)',
+        allowedType: 'large_and_small',
+        allowedTypeLabel: '大船 / 小船',
         isOccupied: false
       }
     ]
@@ -382,3 +392,134 @@ export function checkIsSmallShip(shipNameOrType?: string): boolean {
     lower.includes('小型')
   );
 }
+
+export interface SlotAvailabilityResult {
+  isAvailable: boolean;
+  reason?: string;
+  isMutualExcluded?: boolean; // 是否因组合规则被互斥锁定
+  badgeText?: string;
+}
+
+// 针对 6 个区域的特定组合规则进行深度可用性与冲突判断
+export function checkSlotAvailability(
+  berth: BerthAreaConfig,
+  slotNumber: number,
+  isCurrentShipSmall: boolean,
+  selfOccupiedSlotNumber?: number | null // 编辑时若当前占用了该位，可排除自身
+): SlotAvailabilityResult {
+  const targetSlot = berth.slots.find(s => s.slotNumber === slotNumber);
+  if (!targetSlot) {
+    return { isAvailable: false, reason: '泊位不存在' };
+  }
+
+  // 1. 若当前泊位已被实际占用（且不是编辑时的自身）
+  const isOccupiedByOther = targetSlot.isOccupied && (selfOccupiedSlotNumber !== slotNumber);
+  if (isOccupiedByOther) {
+    return {
+      isAvailable: false,
+      reason: `【${targetSlot.slotName}】已被船舶【${targetSlot.occupiedShip?.name || '在泊船舶'}】占用`,
+      badgeText: '已被占用'
+    };
+  }
+
+  // 2. 区域 2 (2号码头)：只能停泊一艘小船
+  if (berth.id === 'berth-2') {
+    if (!isCurrentShipSmall) {
+      return {
+        isAvailable: false,
+        reason: '2号码头为专用小型泊位，只能停泊一艘小船，大型船舶禁止停入',
+        badgeText: '仅限小船'
+      };
+    }
+  }
+
+  // 3. 区域 5 (2万吨船台)：可停两艘小船或1艘大船。当停1艘大船时不能再停其他船，如果停一艘小船时可再停一艘小船。
+  if (berth.id === 'berth-5') {
+    const otherSlots = berth.slots.filter(s => s.slotNumber !== slotNumber && (selfOccupiedSlotNumber !== s.slotNumber));
+    const hasLargeShipOccupying = otherSlots.some(s => s.isOccupied && s.occupiedShip?.isSmallShip === false);
+    const hasAnyShipOccupying = otherSlots.some(s => s.isOccupied);
+
+    // 如果其他位置已有大船在泊，则 2万吨船台整体已被独占
+    if (hasLargeShipOccupying) {
+      return {
+        isAvailable: false,
+        isMutualExcluded: true,
+        reason: '2万吨船台当前已有大船在泊（大船独占全船台），不可停靠其他船舶',
+        badgeText: '大船独占互斥'
+      };
+    }
+
+    // 如果当前要停入的是大船，且船台内已有任何船舶（无论大船小船）
+    if (!isCurrentShipSmall && hasAnyShipOccupying) {
+      return {
+        isAvailable: false,
+        isMutualExcluded: true,
+        reason: '2万吨船台停泊大船时需独占全船台，当前已有其他船舶在泊，无法停入',
+        badgeText: '大船需独占'
+      };
+    }
+  }
+
+  // 4. 区域 6 (平船台)：共4个停泊位
+  // 组合规则：a.停4艘小船；b.停2艘大船+2艘小船(2艘大船只能并排停放，即1号位和2号位)；c.停1艘大船+3艘小船
+  if (berth.id === 'berth-6') {
+    const occupiedSlots = berth.slots.filter(s => s.isOccupied && (selfOccupiedSlotNumber !== s.slotNumber));
+    const largeShipCount = occupiedSlots.filter(s => s.occupiedShip && s.occupiedShip.isSmallShip === false).length;
+    const smallShipCount = occupiedSlots.filter(s => s.occupiedShip && s.occupiedShip.isSmallShip === true).length;
+    const totalOccupied = occupiedSlots.length;
+
+    if (!isCurrentShipSmall) {
+      // 当前要停放大船
+      if (largeShipCount >= 2) {
+        return {
+          isAvailable: false,
+          isMutualExcluded: true,
+          reason: '平船台最多仅允许停泊 2 艘大船（当前已有2艘大船），不可再停入大船',
+          badgeText: '大船满额(限2艘)'
+        };
+      }
+
+      // 若已有1艘大船，且试图停入第2艘大船：2艘大船只能并排停放在 1号位与 2号位
+      if (largeShipCount === 1) {
+        if (slotNumber !== 1 && slotNumber !== 2) {
+          return {
+            isAvailable: false,
+            isMutualExcluded: true,
+            reason: '规则限制：平船台停泊 2 艘大船时只能并排停放在 1号位与 2号位，3/4号位不可停第2艘大船',
+            badgeText: '大船仅限1/2号并排'
+          };
+        }
+      }
+
+      // 容量上限校验：若已有 1大船 + 3小船 (总数4)，不可再停
+      if (totalOccupied >= 4) {
+        return {
+          isAvailable: false,
+          reason: '平船台 4 个停泊位已全部占满',
+          badgeText: '已满额'
+        };
+      }
+    } else {
+      // 当前要停放小船
+      if (totalOccupied >= 4) {
+        return {
+          isAvailable: false,
+          reason: '平船台 4 个停泊位已全部占满（已达4艘小船上限）',
+          badgeText: '已满额'
+        };
+      }
+    }
+  }
+
+  // 5. 通用类型限制（如标为 small_only 的泊位不可停大船）
+  if (targetSlot.allowedType === 'small_only' && !isCurrentShipSmall) {
+    return {
+      isAvailable: false,
+      reason: `【${targetSlot.slotName}】为小型泊位，仅限小船停泊`,
+      badgeText: '仅限小船'
+    };
+  }
+
+  return { isAvailable: true };
+}
+

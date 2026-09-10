@@ -20,7 +20,8 @@ import { BerthPicker } from './BerthPicker';
 import { 
   BERTH_AREAS, 
   BerthAreaConfig, 
-  checkIsSmallShip 
+  checkIsSmallShip,
+  checkSlotAvailability 
 } from '@/src/data/berthData';
 import { MOCK_PERSONNEL_LIST, DetailedPersonnel } from '@/src/data/mockPersonnel';
 
@@ -182,9 +183,9 @@ export function CreateVersionModal({
 
   if (!isOpen) return null;
 
-  const selectedBerth = BERTH_AREAS.find(b => b.id === selectedBerthId) || BERTH_AREAS[2];
+  const selectedBerth = BERTH_AREAS.find(b => b.id === selectedBerthId) || BERTH_AREAS[0];
   const isSmallShip = checkIsSmallShip(projectName) || checkIsSmallShip(shipType);
-  const is5BerthViolation = selectedBerth.id === 'berth-5' && !isSmallShip;
+  const is2BerthViolation = selectedBerth.id === 'berth-2' && !isSmallShip;
 
   // 人员筛选过滤逻辑
   const filteredPersonnelList = MOCK_PERSONNEL_LIST.filter(person => {
@@ -257,22 +258,18 @@ export function CreateVersionModal({
     const isNoBerthRequired = isCompletedStatus || isTemporaryDeparture;
 
     if (!isNoBerthRequired) {
-      // 校验所选泊位：需考虑是否有其他轮船占用和船型是否符合
+      // 校验所选泊位：按照6个区域的全新规则与组合约束进行深度校验
       if (!selectedSlotNumber) {
-        setErrorMsg('请在厂区停泊位中选择一个空闲且船型匹配的二级具体泊位');
+        setErrorMsg('请在厂区停泊位中选择一个空闲且满足规则的二级具体泊位');
         return;
       }
-      const chosenSlot = selectedBerth.slots.find(s => s.slotNumber === selectedSlotNumber);
+      
       // 编辑时允许维持自己当前占用的泊位
-      const isSelfCurrentSlot = isEdit && editVersion?.berthId === selectedBerth.id && editVersion?.berthSlotNumber === selectedSlotNumber;
-      if (chosenSlot && chosenSlot.isOccupied && !isSelfCurrentSlot) {
-        setErrorMsg(
-          `无法保存：当前选定的【${selectedBerth.shortName} - ${chosenSlot.slotName}】已被其他项目在泊占用，请重新选择空闲泊位！`
-        );
-        return;
-      }
-      if (chosenSlot && chosenSlot.allowedType === 'small_only' && !isSmallShip) {
-        setErrorMsg(`无法保存：当前选定的【${selectedBerth.shortName} - ${chosenSlot.slotName}】仅限小型船舶停靠，请重新选择！`);
+      const selfSlot = (isEdit && editVersion?.berthId === selectedBerth.id) ? editVersion?.berthSlotNumber : null;
+      const availResult = checkSlotAvailability(selectedBerth, selectedSlotNumber, isSmallShip, selfSlot);
+      
+      if (!availResult.isAvailable) {
+        setErrorMsg(`无法保存停泊位移泊规划：${availResult.reason || '当前选定的泊位不符合停泊组合规则，请重新选择！'}`);
         return;
       }
     }
@@ -775,13 +772,13 @@ export function CreateVersionModal({
                       shipType={shipType}
                     />
 
-                    {/* 5号码头小型船只规则限制强提示 */}
-                    {is5BerthViolation && (
+                    {/* 2号码头小型船只规则限制强提示 */}
+                    {is2BerthViolation && (
                       <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs flex items-start gap-2 animate-fadeIn">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                          <strong className="block mb-0.5">5号码头专用船型规则提示：</strong>
-                          当前选择的【5号码头】为小型船舶专属泊位（规则：仅限1艘小型船只，如拖轮、工作艇等）。当前项目为【{shipType} - {projectName}】，若为大型主船体，建议选择1号/6号平船台或2/3/4号码头。
+                          <strong className="block mb-0.5">2号码头专用船型规则提示：</strong>
+                          当前选择的【2号码头】为小型船舶专属泊位（规则：共1个号位，只能停泊一艘小船）。当前项目为【{shipType} - {projectName}】，若为大型主船体，请选择1号码头(新码头)、3号码头(旧码头)、4号码头(浮动码头)、2万吨船台或平船台。
                         </div>
                       </div>
                     )}

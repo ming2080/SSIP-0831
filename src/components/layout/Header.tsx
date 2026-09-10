@@ -18,9 +18,11 @@ import {
 
 interface HeaderProps {
   title: string;
+  currentUser?: { username: string; role: string; name: string };
+  onLogout?: () => void;
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, currentUser, onLogout }: HeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -170,10 +172,10 @@ export function Header({ title }: HeaderProps) {
             {/* 名称与角色展示 */}
             <div className="text-left hidden sm:block">
               <div className="text-xs font-bold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-1">
-                <span>系统管理员</span>
+                <span>{currentUser?.name?.split(' ')[0] || '系统管理员'}</span>
               </div>
               <div className="text-[10px] text-slate-400 leading-tight font-medium">
-                超级管理员
+                {currentUser?.role || '超级管理员'}
               </div>
             </div>
 
@@ -189,14 +191,14 @@ export function Header({ title }: HeaderProps) {
               <div className="p-3 bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl border border-slate-100 mb-1.5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
-                    <span>管</span>
+                    <span>{currentUser?.role?.[0] || '管'}</span>
                   </div>
                   <div className="overflow-hidden">
-                    <h4 className="text-xs font-bold text-slate-800 truncate">系统管理员</h4>
-                    <p className="text-[11px] text-slate-500 font-mono truncate">admin@shipyard.cn</p>
+                    <h4 className="text-xs font-bold text-slate-800 truncate">{currentUser?.name || '系统管理员'}</h4>
+                    <p className="text-[11px] text-slate-500 font-mono truncate">{currentUser?.username || 'admin'}@shipyard.cn</p>
                     <div className="inline-flex items-center gap-1 mt-1 bg-blue-100/70 text-blue-700 text-[10px] px-1.5 py-0.2 rounded font-medium">
                       <ShieldCheck className="w-3 h-3 text-blue-600" />
-                      <span>总控中心 · 最高权限</span>
+                      <span>{currentUser?.role || '总控中心 · 最高权限'}</span>
                     </div>
                   </div>
                 </div>
@@ -244,9 +246,13 @@ export function Header({ title }: HeaderProps) {
               <button 
                 onClick={() => {
                   setIsUserMenuOpen(false);
-                  triggerToast('已安全退出当前会话（测试环境已保持就绪状态）');
+                  if (onLogout) {
+                    onLogout();
+                  } else {
+                    triggerToast('已安全退出当前会话');
+                  }
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left text-xs font-semibold"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left text-xs font-semibold cursor-pointer"
               >
                 <LogOut className="w-4 h-4 text-rose-500" />
                 <span>退出登录</span>

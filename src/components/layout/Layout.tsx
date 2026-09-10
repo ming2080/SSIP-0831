@@ -10,7 +10,12 @@ import { AlarmConfig } from '../views/AlarmConfig';
 import { DeviceManagement } from '../views/DeviceManagement';
 import { ShipModelManagement } from '../views/ShipModelManagement';
 
-export function Layout() {
+interface LayoutProps {
+  currentUser?: { username: string; role: string; name: string };
+  onLogout?: () => void;
+}
+
+export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [personnelNavState, setPersonnelNavState] = useState<{ personId?: string; autoPlay?: boolean } | null>(null);
 
@@ -67,9 +72,20 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden font-sans">
-      <Sidebar currentView={currentView} onChangeView={setCurrentView} />
+      <Sidebar 
+        currentView={currentView} 
+        onChangeView={setCurrentView} 
+        currentUser={currentUser}
+        onLogout={onLogout}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {currentView !== 'dashboard' && <Header title={getViewTitle()} />}
+        {currentView !== 'dashboard' && (
+          <Header 
+            title={getViewTitle()} 
+            currentUser={currentUser}
+            onLogout={onLogout}
+          />
+        )}
         <main className="flex-1 overflow-auto p-3">
           {renderView()}
         </main>

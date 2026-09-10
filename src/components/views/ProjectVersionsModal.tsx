@@ -68,11 +68,11 @@ export function ProjectVersionsModal({
       associatedPersonnelIds: ['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'],
       associatedPersonnelCount: 6,
       enableBerthTransfer: true,
-      berthId: 'berth-1',
-      berthCode: 1,
-      berthName: '1号船台（2万吨船台）',
+      berthId: 'berth-5',
+      berthCode: 5,
+      berthName: '2万吨船台',
       berthSlotNumber: 1,
-      berthCategoryName: '平船台'
+      berthCategoryName: '船台'
     },
     {
       id: 'v2',
@@ -90,7 +90,7 @@ export function ProjectVersionsModal({
       enableBerthTransfer: true,
       berthId: 'berth-3',
       berthCode: 3,
-      berthName: '3号码头 (移动码头)',
+      berthName: '3号码头 (旧码头)',
       berthSlotNumber: 2,
       berthCategoryName: '移动码头'
     }
