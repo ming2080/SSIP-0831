@@ -119,7 +119,7 @@ export const INITIAL_ALARM_RECORDS: AlarmEventRecord[] = [
     policyId: 4,
     policyName: '船台及船坞深坑防高空坠落红线越界告警',
     policyVersion: 'V2',
-    policyType: '超出活动范围',
+    policyType: '人员进入',
     projectType: 'shipbuilding',
     projectName: '30万吨VLCC超大型原油船 (H1788B)',
     isRealtime: true,
@@ -215,9 +215,9 @@ export const INITIAL_ALARM_RECORDS: AlarmEventRecord[] = [
   {
     id: 'ALM-20260906-003',
     policyId: 5,
-    policyName: '30万吨VLCC机舱受限空间滞留管理',
+    policyName: '30万吨VLCC机舱受限空间异常停留',
     policyVersion: 'V1',
-    policyType: '受限空间滞留',
+    policyType: '异常停留',
     projectType: 'shipbuilding',
     projectName: '30万吨VLCC超大型原油船 (H1788B)',
     isRealtime: true,
@@ -297,14 +297,99 @@ export const INITIAL_ALARM_RECORDS: AlarmEventRecord[] = [
       }
     ]
   },
+  {
+    id: 'ALM-20260906-004',
+    policyId: 7,
+    policyName: '全厂作业人员定位标签防拆断开监测策略',
+    policyVersion: 'V1',
+    policyType: '标签防拆',
+    projectType: 'shipbuilding',
+    projectName: '17.4万方超大型LNG船 (H1821A)',
+    isRealtime: true,
+    conditionDesc: '防拆触点开关断开 持续大于 1秒',
+    currentValue: 'TAG-9012 物理防拆微动开关触点处于离线断开状态',
+    thresholdValue: '状态=断开 (触点断开即时报警)',
+    unit: '状态',
+    areaType: '造船台/船坞 · 外板焊接区',
+    areaName: '1号造船台 · 右舷舯部分段',
+    areaConditions: [
+      { type: '造船台/船坞', relation: '是', target: '1号造船台' }
+    ],
+    targetPerson: '周建明',
+    personId: 'EMP-042',
+    personRole: '装配铆工',
+    personDept: '船体结构二队 · 装配二组',
+    personConditions: [
+      { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+    ],
+    initialLevel: '低',
+    currentLevel: '高',
+    currentNotifyTarget: '当班区域安全员-陈建国',
+    upgradeStatus: 'upgrading',
+    upgradeCountdownSeconds: 85,
+    upgradePlans: [
+      {
+        level: '低',
+        target: '现场施工班组长 (王强)',
+        countdown: '1分钟',
+        status: 'passed',
+        triggeredAt: '2026-09-06 20:45:10'
+      },
+      {
+        level: '中',
+        target: '当班区域安全员 (陈建国)',
+        countdown: '3分钟',
+        status: 'active',
+        triggeredAt: '2026-09-06 20:46:10'
+      },
+      {
+        level: '高',
+        target: '厂级安全总监与应急指挥中心',
+        countdown: '最高级别无需升级',
+        status: 'pending'
+      }
+    ],
+    notifyWays: ['声光报警通知', '发送短信通知'],
+    soundLightStatus: 'active',
+    smsNoticeCount: 1,
+    repeatInterval: '重复告警',
+    effectivePeriod: '永久',
+    triggerTime: '2026-09-06 20:45:10',
+    durationStr: '已持续 6分钟',
+    processStatus: 'pending',
+    handler: '待安全员接单签收',
+    handlerPhone: '138-1234-5678',
+    attachments: [
+      {
+        id: 'ATT-005',
+        type: 'image',
+        name: '现场定位标签物理外壳脱扣防拆特写.jpg',
+        url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+        size: '1.8 MB',
+        uploadTime: '2026-09-06 20:45:30'
+      }
+    ],
+    workflowLogs: [
+      {
+        id: 'STEP-1',
+        stepName: '触发标签防拆事件',
+        operator: '系统自动触发 (TAG-9012传感器)',
+        role: 'IoT网关',
+        department: '智能感知物联网平台',
+        time: '2026-09-06 20:45:10',
+        action: '监测到人员定位胸卡防拆拨扣处于打开脱开状态',
+        status: 'completed'
+      }
+    ]
+  },
 
   // ====================== 2. 历史告警 (已闭环 / 误报消除 / 归档审计) ======================
   {
     id: 'ALM-20260905-018',
     policyId: 2,
-    policyName: '全厂区未佩戴安全帽智能识别策略',
+    policyName: '全厂区安全帽脱落智能识别策略',
     policyVersion: 'V1',
-    policyType: '未佩戴安全帽',
+    policyType: '安全帽脱落',
     projectType: 'none',
     projectName: '',
     isRealtime: false,

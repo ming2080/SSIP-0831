@@ -52,6 +52,7 @@ export function ProjectVersionsModal({
 }: ProjectVersionsModalProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVersion, setEditingVersion] = useState<VersionPayload | null>(null);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   const [versions, setVersions] = useState<VersionPayload[]>([
     {
@@ -190,7 +191,15 @@ export function ProjectVersionsModal({
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button 
+              onClick={() => setShowMapModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-2xs active:scale-98 cursor-pointer"
+              title="查看全厂区停泊位与码头分布示意图"
+            >
+              <MapPin className="w-3.5 h-3.5 text-cyan-600" />
+              <span>泊位示意图</span>
+            </button>
             <button 
               onClick={handleOpenCreate} 
               disabled={isProjectCompleted}
@@ -424,6 +433,64 @@ export function ProjectVersionsModal({
         editVersion={editingVersion}
         previousProjectStatus={previousProjectStatus}
       />
+
+      {/* 厂区停泊位示意图查看模态框 */}
+      {showMapModal && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setShowMapModal(false)}
+        >
+          <div 
+            className="relative bg-slate-900 border border-slate-700/90 rounded-2xl p-4 max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl animate-in fade-in zoom-in duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span>船厂厂区停泊位场景示意图 (2026-09-16新版)</span>
+                  <span className="text-xs font-mono text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
+                    assets/停泊位示意图-0916.png
+                  </span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMapModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 min-h-0 bg-slate-950/60 rounded-xl mt-3 border border-slate-800/80">
+              <img
+                src="/assets/停泊位示意图-0916.png"
+                alt="东南造船厂厂区停泊位场景示意图"
+                className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-md select-none"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallback) {
+                    target.dataset.fallback = 'true';
+                    target.src = 'assets/停泊位示意图-0916.png';
+                  }
+                }}
+              />
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+              <span className="text-[11px]">包含1-4号码头、5号2万吨船台、6号平船台共六大停泊区域</span>
+              <button
+                type="button"
+                onClick={() => setShowMapModal(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+              >
+                关闭预览
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

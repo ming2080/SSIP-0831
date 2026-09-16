@@ -47,6 +47,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
   UserCheck,
+  FolderTree,
+  FolderKanban,
   X
 } from 'lucide-react';
 import { MOCK_PROJECTS } from '@/src/data/mockProjects';
@@ -57,6 +59,8 @@ import {
   WORKER_ROLE_OPTIONS, 
   WORKER_TEAM_OPTIONS 
 } from '@/src/data/mockPersonnel';
+import { TeamTreeSelect } from '@/src/components/common/TeamTreeSelect';
+import { DepartmentNode } from '@/src/data/departmentData';
 
 import lngShipImg from '@/src/assets/images/lng_ship_model_1787972569670.jpg';
 import containerShipImg from '@/src/assets/images/container_ship_model_1787972581740.jpg';
@@ -71,10 +75,16 @@ interface PersonnelTrackingProps {
 export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: PersonnelTrackingProps = {}) {
   // 选中的人员
   const [selectedPersonId, setSelectedPersonId] = useState<string>(initialPersonId || 'EMP-001');
+  // 项目关联人员筛选 ('all' 或具体 projectId)
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
   // 人员工种下拉筛选
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
-  // 人员班组下拉筛选
+  // 人员班组树形筛选 (保存选中的 deptid 或 'all')
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
+  // 选中的班组节点对象
+  const [selectedTeamNode, setSelectedTeamNode] = useState<DepartmentNode | null>(null);
+  // 选中的节点及其所有子孙节点的匹配名称列表
+  const [selectedTeamMatchedNames, setSelectedTeamMatchedNames] = useState<string[]>([]);
   // 搜索关键词（姓名/工号/角色/定位卡号）
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   
@@ -150,7 +160,17 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
     return MOCK_PROJECTS.find(p => p.id === activeViewerProjectId) || MOCK_PROJECTS[0];
   }, [activeViewerProjectId]);
 
-  // 人员列表过滤（根据搜索关键字、工种下拉、班组下拉）
+  // 各工程项目的关联人员数量统计映射
+  const projectPersonnelCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    MOCK_PROJECTS.forEach(proj => {
+      const count = MOCK_PERSONNEL_LIST.filter(p => p.projectId === proj.id).length;
+      map.set(proj.id, count);
+    });
+    return map;
+  }, []);
+
+  // 人员列表过滤（根据搜索关键字、项目关联人员、工种下拉、班组树形结构层级匹配）
   const filteredPersonnel = useMemo(() => {
     return MOCK_PERSONNEL_LIST.filter(p => {
       const matchKeyword = 
@@ -160,14 +180,50 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
         p.role.toLowerCase().includes(searchKeyword.toLowerCase()) ||
         p.locatorId.toLowerCase().includes(searchKeyword.toLowerCase()) ||
         p.department.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        p.projectName.toLowerCase().includes(searchKeyword.toLowerCase());
+        p.projectName.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        (p.projectId && p.projectId.toLowerCase().includes(searchKeyword.toLowerCase()));
       
-      const matchRole = selectedRoleFilter === 'all' || p.role === selectedRoleFilter;
-      const matchTeam = selectedTeamFilter === 'all' || p.department === selectedTeamFilter;
+      // 项目关联人员匹配
+      const matchProject = selectedProjectFilter === 'all' || p.projectId === selectedProjectFilter;
 
-      return matchKeyword && matchRole && matchTeam;
+      // 工种匹配
+      const matchRole = selectedRoleFilter === 'all' || p.role === selectedRoleFilter;
+
+      // 班组树形层级关联匹配
+      let matchTeam = true;
+      if (selectedTeamFilter !== 'all') {
+        const pDept = (p.department || '').trim();
+        if (selectedTeamMatchedNames.length > 0) {
+          matchTeam = selectedTeamMatchedNames.some(name => {
+            return pDept === name || 
+                   pDept.includes(name) || 
+                   name.includes(pDept) ||
+                   (name === '船体电焊一组' && pDept.includes('电焊')) ||
+                   (name === '船体装配二班' && pDept.includes('装配')) ||
+                   (name === '特种喷涂一组' && (pDept.includes('喷涂') || pDept.includes('涂装'))) ||
+                   (name === '大合拢搭载班' && (pDept.includes('搭载') || pDept.includes('船装'))) ||
+                   (name === '起重吊装组' && pDept.includes('起重')) ||
+                   (name === '气割与等离子切割组' && (pDept.includes('切割') || pDept.includes('机电'))) ||
+                   (name === '船坞码头安全督查巡检组' && (pDept.includes('安全') || pDept.includes('安环')));
+          });
+        } else {
+          matchTeam = p.department === selectedTeamFilter;
+        }
+      }
+
+      return matchKeyword && matchProject && matchRole && matchTeam;
     });
-  }, [searchKeyword, selectedRoleFilter, selectedTeamFilter]);
+  }, [searchKeyword, selectedProjectFilter, selectedRoleFilter, selectedTeamFilter, selectedTeamMatchedNames]);
+
+  // 当筛选变化导致当前选中的人员不再在过滤结果中时，智能切换至当前首位在场人员
+  useEffect(() => {
+    if (filteredPersonnel.length > 0) {
+      const isCurrentInFiltered = filteredPersonnel.some(p => p.id === selectedPersonId);
+      if (!isCurrentInFiltered) {
+        setSelectedPersonId(filteredPersonnel[0].id);
+      }
+    }
+  }, [filteredPersonnel, selectedPersonId]);
 
   // 根据时间范围查询过滤当前人员的轨迹节点
   const filteredTrajectory = useMemo(() => {
@@ -1456,7 +1512,7 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
               type="text" 
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="搜索姓名、工号、卡号、岗位..." 
+              placeholder="搜索姓名、工号、卡号、岗位、所属项目..." 
               className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs transition-all"
             />
             {searchKeyword && (
@@ -1469,9 +1525,48 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
             )}
           </div>
 
-          {/* 人员工种与人员班组下拉筛选条件 */}
+          {/* 维度多重筛选条件：1.项目关联人员 2.人员工种 3.人员班组 */}
           <div className="space-y-2 pt-1 border-t border-slate-100">
-            {/* 1. 人员工种下拉筛选 */}
+            {/* 1. 项目关联人员项筛选 */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <FolderKanban className="w-3 h-3 text-blue-600" />
+                  <span>项目关联人员</span>
+                </span>
+                {selectedProjectFilter !== 'all' && (
+                  <span className="text-[10px] text-blue-600 font-normal">已筛选</span>
+                )}
+              </label>
+              <select 
+                value={selectedProjectFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedProjectFilter(val);
+                  // 选定具体工程项目时，智能联动切换右侧模型查看器对应的项目
+                  if (val !== 'all') {
+                    setActiveViewerProjectId(val);
+                  }
+                }}
+                className={`w-full text-xs border rounded-lg py-1.5 px-2.5 outline-none transition-all cursor-pointer shadow-2xs ${
+                  selectedProjectFilter !== 'all' 
+                    ? 'bg-blue-50/50 border-blue-400 text-blue-800 font-semibold ring-2 ring-blue-500/10' 
+                    : 'bg-white border-slate-200 text-slate-700 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                }`}
+              >
+                <option value="all">全部造船工程项目 ({MOCK_PROJECTS.length} 个项目 / 全厂人员)</option>
+                {MOCK_PROJECTS.map(proj => {
+                  const count = projectPersonnelCountMap.get(proj.id) || 0;
+                  return (
+                    <option key={proj.id} value={proj.id}>
+                      {proj.name} ({count}人 · {proj.phase})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* 2. 人员工种下拉筛选 */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
                 <span className="flex items-center gap-1">
@@ -1500,42 +1595,42 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
               </select>
             </div>
 
-            {/* 2. 人员班组下拉筛选 */}
+            {/* 3. 人员班组树形结构筛选 */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <Building2 className="w-3 h-3 text-blue-600" />
-                  <span>人员班组</span>
+                  <FolderTree className="w-3 h-3 text-blue-600" />
+                  <span>人员班组 (层级架构)</span>
                 </span>
                 {selectedTeamFilter !== 'all' && (
-                  <span className="text-[10px] text-blue-600 font-normal">已筛选</span>
+                  <span className="text-[10px] text-blue-600 font-normal">
+                    {selectedTeamNode ? `已选: ${selectedTeamNode.deptname}` : '已筛选'}
+                  </span>
                 )}
               </label>
-              <select 
+
+              <TeamTreeSelect
                 value={selectedTeamFilter}
-                onChange={(e) => setSelectedTeamFilter(e.target.value)}
-                className={`w-full text-xs border rounded-lg py-1.5 px-2.5 outline-none transition-all cursor-pointer shadow-2xs ${
-                  selectedTeamFilter !== 'all' 
-                    ? 'bg-blue-50/50 border-blue-400 text-blue-800 font-semibold ring-2 ring-blue-500/10' 
-                    : 'bg-white border-slate-200 text-slate-700 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                }`}
-              >
-                <option value="all">全部班组 ({WORKER_TEAM_OPTIONS.length} 个班组/部门)</option>
-                {WORKER_TEAM_OPTIONS.map(team => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
+                onChange={(deptId, node, descendantIds, matchedNames) => {
+                  setSelectedTeamFilter(deptId);
+                  setSelectedTeamNode(node);
+                  setSelectedTeamMatchedNames(matchedNames);
+                }}
+                personnelList={MOCK_PERSONNEL_LIST}
+                placeholder="全部人员班组 (全厂架构)"
+              />
             </div>
 
             {/* 快速重置过滤按钮 */}
-            {(selectedRoleFilter !== 'all' || selectedTeamFilter !== 'all' || searchKeyword.trim() !== '') && (
+            {(selectedProjectFilter !== 'all' || selectedRoleFilter !== 'all' || selectedTeamFilter !== 'all' || searchKeyword.trim() !== '') && (
               <div className="flex justify-end pt-1">
                 <button
                   onClick={() => {
+                    setSelectedProjectFilter('all');
                     setSelectedRoleFilter('all');
                     setSelectedTeamFilter('all');
+                    setSelectedTeamNode(null);
+                    setSelectedTeamMatchedNames([]);
                     setSearchKeyword('');
                   }}
                   className="text-[11px] text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1 py-0.5"

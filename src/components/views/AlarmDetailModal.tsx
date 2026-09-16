@@ -280,15 +280,18 @@ export function AlarmDetailModal({ isOpen, rule, onClose, onEdit }: AlarmDetailM
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>通知渠道：</span>
-                {snapshot.notifyWays && snapshot.notifyWays.length > 0 ? (
-                  snapshot.notifyWays.map((w, idx) => (
-                    <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 text-[11px] font-medium">
-                      {w}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-400">未指定</span>
-                )}
+                {(() => {
+                  const isTamper = snapshot.type === '标签防拆' || snapshot.type?.includes('防拆');
+                  const ways = (snapshot.notifyWays || []).filter(w => !isTamper || w !== '声光报警通知');
+                  if (ways.length > 0) {
+                    return ways.map((w, idx) => (
+                      <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 text-[11px] font-medium">
+                        {w}
+                      </span>
+                    ));
+                  }
+                  return <span className="text-slate-400">{isTamper ? '未开启短信通知' : '未指定'}</span>;
+                })()}
               </div>
             </div>
 

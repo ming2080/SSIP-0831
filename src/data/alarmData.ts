@@ -58,6 +58,20 @@ export interface AlarmRuleItem {
   effectivePeriod: '自定义' | '永久';
 }
 
+// 告警策略类型标准枚举选项（附图几项 + 标签防拆）
+export const ALARM_POLICY_TYPES = [
+  '人员进入',
+  '气体告警',
+  '安全帽脱落',
+  '厂区吸烟',
+  '厂区玩手机',
+  '异常停留',
+  '烟感告警',
+  '标签防拆'
+] as const;
+
+export type AlarmPolicyType = typeof ALARM_POLICY_TYPES[number];
+
 // 辅助函数：生成版本号 V{number}，例如 V1、V2、V3
 export function generateVersionId(versionNumber: number): string {
   return `V${versionNumber}`;
@@ -176,8 +190,8 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
   },
   {
     id: 2,
-    name: '全厂区未佩戴安全帽智能识别策略',
-    type: '未佩戴安全帽',
+    name: '全厂区安全帽脱落智能识别策略',
+    type: '安全帽脱落',
     level: '中',
     notify: '是',
     period: '永久',
@@ -214,8 +228,8 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
         modifier: '系统管理员',
         changeNotes: '初始创建全厂区安全帽AI视觉+定位穿戴违规检测全局策略',
         snapshot: {
-          name: '全厂区未佩戴安全帽智能识别策略',
-          type: '未佩戴安全帽',
+          name: '全厂区安全帽脱落智能识别策略',
+          type: '安全帽脱落',
           level: '中',
           areaConditions: [
             { type: '车间生产线', relation: '是', target: '总装车间' },
@@ -244,8 +258,8 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
   },
   {
     id: 3,
-    name: '2号码头重型龙门吊立体防侵入警戒',
-    type: '进入危险区域',
+    name: '2号码头重型龙门吊防侵入人员进入告警',
+    type: '人员进入',
     level: '高',
     notify: '是',
     period: '永久',
@@ -369,8 +383,8 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
   },
   {
     id: 4,
-    name: '密闭舱室作业人员静止不活动超时预警',
-    type: '长时间静止',
+    name: '密闭舱室作业人员异常停留超时预警',
+    type: '异常停留',
     level: '高',
     notify: '是',
     period: '永久',
@@ -437,8 +451,8 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
   },
   {
     id: 5,
-    name: '30万吨VLCC机舱管路区受限空间滞留管理',
-    type: '受限空间滞留',
+    name: '30万吨VLCC机舱管路区受限空间异常停留',
+    type: '异常停留',
     level: '中',
     notify: '是',
     period: '永久',
@@ -583,6 +597,208 @@ export const INITIAL_ALARM_RULES: AlarmRuleItem[] = [
             low: '现场施工班组长',
             lowCountdown: '',
             mid: '',
+            midCountdown: '',
+            high: ''
+          },
+          notifyWays: ['声光报警通知'],
+          repeatInterval: '不重复',
+          effectivePeriod: '永久',
+          status: '启用'
+        }
+      }
+    ]
+  },
+  {
+    id: 7,
+    name: '全厂作业人员定位标签防拆断开监测策略',
+    type: '标签防拆',
+    level: '高',
+    notify: '是',
+    period: '永久',
+    status: '启用',
+    currentVersion: 'V1',
+    modifiedAt: '2026-08-28 10:15:00',
+    createdAt: '2026-08-28 10:15:00',
+    areaConditions: [
+      { type: '造船台/船坞', relation: '是', target: '1号造船台' },
+      { type: '车间生产线', relation: '是', target: '总装车间' }
+    ],
+    personConditions: [
+      { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+    ],
+    conditionType: '防拆触点断开触发',
+    conditionOperator: '等于',
+    conditionValue: 1,
+    notifyTargets: {
+      low: '现场施工班组长',
+      lowCountdown: '1分钟',
+      mid: '当班区域安全员',
+      midCountdown: '3分钟',
+      high: '厂级安全总监与应急指挥中心'
+    },
+    notifyWays: ['声光报警通知', '发送短信通知'],
+    repeatInterval: '重复告警',
+    effectivePeriod: '永久',
+    versions: [
+      {
+        versionId: 'V1',
+        versionNumber: 1,
+        dateStr: '20260828',
+        createdAt: '2026-08-28 10:15:00',
+        modifier: '系统管理员',
+        changeNotes: '初始配置防拆触点传感器状态断开触发的防拆告警策略',
+        snapshot: {
+          name: '全厂作业人员定位标签防拆断开监测策略',
+          type: '标签防拆',
+          level: '高',
+          areaConditions: [
+            { type: '造船台/船坞', relation: '是', target: '1号造船台' },
+            { type: '车间生产线', relation: '是', target: '总装车间' }
+          ],
+          personConditions: [
+            { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+          ],
+          conditionType: '防拆触点断开触发',
+          conditionOperator: '等于',
+          conditionValue: 1,
+          notifyTargets: {
+            low: '现场施工班组长',
+            lowCountdown: '1分钟',
+            mid: '当班区域安全员',
+            midCountdown: '3分钟',
+            high: '厂级安全总监与应急指挥中心'
+          },
+          notifyWays: ['声光报警通知', '发送短信通知'],
+          repeatInterval: '重复告警',
+          effectivePeriod: '永久',
+          status: '启用'
+        }
+      }
+    ]
+  },
+  {
+    id: 8,
+    name: '涂装分段车间易燃易爆区域烟感告警策略',
+    type: '烟感告警',
+    level: '高',
+    notify: '是',
+    period: '永久',
+    status: '启用',
+    currentVersion: 'V1',
+    modifiedAt: '2026-08-29 11:20:00',
+    createdAt: '2026-08-29 11:20:00',
+    areaConditions: [
+      { type: '车间生产线', relation: '是', target: '涂装车间' }
+    ],
+    personConditions: [
+      { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+    ],
+    conditionType: '可燃气体超标浓度',
+    conditionOperator: '大于',
+    conditionValue: 10,
+    notifyTargets: {
+      low: '当班区域安全员',
+      lowCountdown: '1分钟',
+      mid: '车间安全主任',
+      midCountdown: '3分钟',
+      high: '厂级安全总监与应急指挥中心'
+    },
+    notifyWays: ['声光报警通知', '发送短信通知'],
+    repeatInterval: '重复告警',
+    effectivePeriod: '永久',
+    versions: [
+      {
+        versionId: 'V1',
+        versionNumber: 1,
+        dateStr: '20260829',
+        createdAt: '2026-08-29 11:20:00',
+        modifier: '系统管理员',
+        changeNotes: '初始配置涂装车间高灵敏度防爆烟感红外预警策略',
+        snapshot: {
+          name: '涂装分段车间易燃易爆区域烟感告警策略',
+          type: '烟感告警',
+          level: '高',
+          areaConditions: [
+            { type: '车间生产线', relation: '是', target: '涂装车间' }
+          ],
+          personConditions: [
+            { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+          ],
+          conditionType: '可燃气体超标浓度',
+          conditionOperator: '大于',
+          conditionValue: 10,
+          notifyTargets: {
+            low: '当班区域安全员',
+            lowCountdown: '1分钟',
+            mid: '车间安全主任',
+            midCountdown: '3分钟',
+            high: '厂级安全总监与应急指挥中心'
+          },
+          notifyWays: ['声光报警通知', '发送短信通知'],
+          repeatInterval: '重复告警',
+          effectivePeriod: '永久',
+          status: '启用'
+        }
+      }
+    ]
+  },
+  {
+    id: 9,
+    name: '船坞船台禁火区域人员厂区吸烟违章识别',
+    type: '厂区吸烟',
+    level: '高',
+    notify: '是',
+    period: '永久',
+    status: '启用',
+    currentVersion: 'V1',
+    modifiedAt: '2026-08-30 14:00:00',
+    createdAt: '2026-08-30 14:00:00',
+    areaConditions: [
+      { type: '造船台/船坞', relation: '是', target: '1号造船台' },
+      { type: '密闭液货舱室', relation: '是', target: '1#液货舱' }
+    ],
+    personConditions: [
+      { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+    ],
+    conditionType: '无进出许可进入',
+    conditionOperator: '大于',
+    conditionValue: 0,
+    notifyTargets: {
+      low: '当班区域安全员',
+      lowCountdown: '2分钟',
+      mid: '车间安全主任',
+      midCountdown: '',
+      high: ''
+    },
+    notifyWays: ['声光报警通知'],
+    repeatInterval: '不重复',
+    effectivePeriod: '永久',
+    versions: [
+      {
+        versionId: 'V1',
+        versionNumber: 1,
+        dateStr: '20260830',
+        createdAt: '2026-08-30 14:00:00',
+        modifier: '安全主管-张明',
+        changeNotes: '初始创建禁烟重点防爆区域吸烟行为AI识别策略',
+        snapshot: {
+          name: '船坞船台禁火区域人员厂区吸烟违章识别',
+          type: '厂区吸烟',
+          level: '高',
+          areaConditions: [
+            { type: '造船台/船坞', relation: '是', target: '1号造船台' },
+            { type: '密闭液货舱室', relation: '是', target: '1#液货舱' }
+          ],
+          personConditions: [
+            { scope: '全厂工人', relation: '是', target: '全体施工人员' }
+          ],
+          conditionType: '无进出许可进入',
+          conditionOperator: '大于',
+          conditionValue: 0,
+          notifyTargets: {
+            low: '当班区域安全员',
+            lowCountdown: '2分钟',
+            mid: '车间安全主任',
             midCountdown: '',
             high: ''
           },

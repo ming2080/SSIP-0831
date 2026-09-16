@@ -9,6 +9,10 @@ import { ElectronicFence } from '../views/ElectronicFence';
 import { AlarmConfig } from '../views/AlarmConfig';
 import { DeviceManagement } from '../views/DeviceManagement';
 import { ShipModelManagement } from '../views/ShipModelManagement';
+import { PersonnelManagement } from '../views/PersonnelManagement';
+import { UserManagement } from '../views/UserManagement';
+import { TeamManagement } from '../views/TeamManagement';
+import { TagManagement } from '../views/TagManagement';
 
 interface LayoutProps {
   currentUser?: { username: string; role: string; name: string };
@@ -18,6 +22,8 @@ interface LayoutProps {
 export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [personnelNavState, setPersonnelNavState] = useState<{ personId?: string; autoPlay?: boolean } | null>(null);
+  const [selectedEmpForUserCreation, setSelectedEmpForUserCreation] = useState<string | undefined>(undefined);
+  const [targetDeptIdForPersonnel, setTargetDeptIdForPersonnel] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const handleCustomNavigate = (e: any) => {
@@ -50,6 +56,35 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
           initialAutoPlay={personnelNavState?.autoPlay} 
         />
       );
+      case 'personnel_mgmt': return (
+        <PersonnelManagement 
+          targetDeptId={targetDeptIdForPersonnel}
+          onOpenUserManagement={(empId) => {
+            setSelectedEmpForUserCreation(empId);
+            setCurrentView('user_mgmt');
+          }}
+          onNavigateToTeams={() => setCurrentView('team_mgmt')}
+        />
+      );
+      case 'team_mgmt': return (
+        <TeamManagement 
+          onNavigateToPersonnel={(deptId) => {
+            setTargetDeptIdForPersonnel(deptId);
+            setCurrentView('personnel_mgmt');
+          }}
+        />
+      );
+      case 'tags': return (
+        <TagManagement 
+          onNavigateToPersonnel={() => setCurrentView('personnel_mgmt')}
+        />
+      );
+      case 'user_mgmt': return (
+        <UserManagement 
+          onNavigateToPersonnel={() => setCurrentView('personnel_mgmt')}
+          targetEmpId={selectedEmpForUserCreation}
+        />
+      );
       case 'fence': return <ElectronicFence />;
       case 'alarms': return <AlarmConfig />;
       case 'devices': return <DeviceManagement />;
@@ -59,10 +94,14 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
 
   const getViewTitle = () => {
     switch (currentView) {
-      case 'dashboard': return '领导驾驶舱';
+      case 'dashboard': return '驾驶舱';
       case 'projects': return '项目管理';
-      case 'models': return '轮船模型管理';
+      case 'models': return '航模管理';
       case 'personnel': return '人员定位';
+      case 'personnel_mgmt': return '人员管理';
+      case 'tags': return '定位标签管理';
+      case 'team_mgmt': return '组织管理';
+      case 'user_mgmt': return '用户管理';
       case 'fence': return '电子围栏';
       case 'alarms': return '告警配置';
       case 'devices': return '设备管理';

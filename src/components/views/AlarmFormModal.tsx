@@ -12,7 +12,7 @@ import {
   ShieldAlert,
   BellRing
 } from 'lucide-react';
-import { AlarmRuleItem, AlarmRuleVersion, generateVersionId, formatDateTime } from '@/src/data/alarmData';
+import { AlarmRuleItem, AlarmRuleVersion, generateVersionId, formatDateTime, ALARM_POLICY_TYPES } from '@/src/data/alarmData';
 
 interface AlarmFormModalProps {
   isOpen: boolean;
@@ -205,8 +205,9 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
       mainLevel = '中';
     }
 
+    const isTamperType = type === '标签防拆' || type.includes('防拆');
     const notifyWays: string[] = [];
-    if (notifySoundLight) notifyWays.push('声光报警通知');
+    if (!isTamperType && notifySoundLight) notifyWays.push('声光报警通知');
     if (notifySms) notifyWays.push('发送短信通知');
 
     const lowCdFormatted = lowCountdown ? `${lowCountdown}${lowUnit}` : '';
@@ -440,14 +441,9 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-[13px] bg-white cursor-pointer"
               >
                 <option value="" disabled hidden>请选择策略类型</option>
-                <option value="气体告警">气体告警 (气瓶泄漏 / 密闭舱可燃有毒有害气体)</option>
-                <option value="厂区玩手机">厂区玩手机 (作业区视线分散 AI 视觉检测)</option>
-                <option value="未佩戴安全帽">未佩戴安全帽 (AI 视觉+定位手环合规联动)</option>
-                <option value="进入危险区域">进入危险区域 (高压电/探伤射线/龙门吊吊运区)</option>
-                <option value="受限空间滞留">受限空间滞留 (双人联合作业与超时限报警)</option>
-                <option value="长时间静止">长时间静止 (人员昏迷/跌落失能探测)</option>
-                <option value="超出活动范围">超出活动范围 (工位越界越限告警)</option>
-                <option value="高空临边无防护">高空临边无防护 (高处搭设作业防坠保护)</option>
+                {ALARM_POLICY_TYPES.map(policyType => (
+                  <option key={policyType} value={policyType}>{policyType}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -632,6 +628,8 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                 <option value="静止不活动时长">静止不活动时长</option>
                 <option value="无进出许可进入">无进出许可进入</option>
                 <option value="未佩戴定位手环">未佩戴定位手环</option>
+                <option value="防拆触点断开触发">防拆触点断开触发</option>
+                <option value="烟雾浓度超标">烟雾浓度超标</option>
               </select>
 
               <select 
@@ -790,15 +788,17 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
               通知方式
             </label>
             <div className="flex items-center gap-6 text-slate-700">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={notifySoundLight}
-                  onChange={(e) => setNotifySoundLight(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 accent-blue-600 cursor-pointer"
-                />
-                <span>声光报警通知</span>
-              </label>
+              {!(type === '标签防拆' || type.includes('防拆')) && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={notifySoundLight}
+                    onChange={(e) => setNotifySoundLight(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 accent-blue-600 cursor-pointer"
+                  />
+                  <span>声光报警通知</span>
+                </label>
+              )}
 
               <label className="flex items-center gap-2 cursor-pointer">
                 <input 
@@ -809,6 +809,12 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                 />
                 <span>发送短信通知</span>
               </label>
+
+              {(type === '标签防拆' || type.includes('防拆')) && (
+                <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                  标签防拆告警类型下仅保留发送短信通知
+                </span>
+              )}
             </div>
           </div>
 

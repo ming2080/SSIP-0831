@@ -8,7 +8,9 @@ import {
   Ban,
   Check,
   Sparkles,
-  Layers
+  Layers,
+  Maximize2,
+  X
 } from 'lucide-react';
 import { 
   BERTH_AREAS, 
@@ -43,6 +45,8 @@ export function BerthPicker({
   
   // 提示信息
   const [warningMsg, setWarningMsg] = useState<string | null>(null);
+  // 示意图放大查看弹窗
+  const [showZoomModal, setShowZoomModal] = useState(false);
 
   useEffect(() => {
     if (selectedBerthId) {
@@ -149,29 +153,33 @@ export function BerthPicker({
           </div>
 
           {/* 纯展示示意图片容器 */}
-          <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-inner flex items-center justify-center">
+          <div 
+            onClick={() => setShowZoomModal(true)}
+            className="group relative w-full aspect-square sm:aspect-[4/3] lg:aspect-square rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-inner flex items-center justify-center cursor-pointer"
+            title="点击查看高清大图"
+          >
             <img 
-              src="/assets/船厂背景-宽屏版.jpg" 
-              alt="东南造船厂厂区停泊位场景示意图" 
-              className="w-full h-full object-cover object-center select-none pointer-events-none"
+              src="/assets/停泊位示意图-0916.png" 
+              alt="东南造船厂厂区停泊位场景示意图 (2026-09-16新版)" 
+              className="w-full h-full object-contain object-center select-none group-hover:scale-102 transition-transform duration-300"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallback) {
+                  target.dataset.fallback = 'true';
+                  target.src = 'assets/停泊位示意图-0916.png';
+                }
+              }}
             />
-            {/* 纯视觉微光滤镜 */}
-            <div className="absolute inset-0 bg-slate-950/20 pointer-events-none"></div>
-
-            {/* 静态区域分布标签 */}
-            <div className="absolute top-2 left-2 right-2 bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-700/70 text-[10px] text-slate-300 pointer-events-none space-y-0.5 shadow-sm">
-              <div className="text-cyan-300 font-bold flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-cyan-400" />
-                <span>厂区停泊区域分布规划：</span>
+            {/* 悬浮放大提示条 */}
+            <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900/90 text-white text-[11px] px-3 py-1.5 rounded-full border border-slate-600 flex items-center gap-1.5 shadow-lg backdrop-blur-xs">
+                <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>点击查看高清示意大图</span>
               </div>
-              <div className="text-slate-200 text-[9.5px] leading-tight flex flex-wrap gap-x-2 gap-y-0.5">
-                <span>① 1号码头(新码头·3位)</span>
-                <span>② 2号码头(1小船位)</span>
-                <span>③ 3号码头(旧码头·2位)</span>
-                <span>④ 4号码头(浮动码头·2位)</span>
-                <span>⑤ 2万吨船台(2小或1大独占)</span>
-                <span>⑥ 平船台(4位复合)</span>
-              </div>
+            </div>
+            {/* 右上角放大图标 */}
+            <div className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white rounded-lg border border-slate-700/60 shadow-xs pointer-events-none">
+              <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
             </div>
           </div>
 
@@ -421,6 +429,64 @@ export function BerthPicker({
         </div>
 
       </div>
+
+      {/* 高清停泊位示意图放大查看模态框 */}
+      {showZoomModal && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setShowZoomModal(false)}
+        >
+          <div 
+            className="relative bg-slate-900 border border-slate-700/90 rounded-2xl p-3 sm:p-4 max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span>船厂厂区停泊位场景示意图 (2026-09-16新版)</span>
+                  <span className="text-xs font-mono text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
+                    assets/停泊位示意图-0916.png
+                  </span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowZoomModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 min-h-0 bg-slate-950/60 rounded-xl mt-3 border border-slate-800/80">
+              <img
+                src="/assets/停泊位示意图-0916.png"
+                alt="东南造船厂厂区停泊位场景示意图"
+                className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-md select-none"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallback) {
+                    target.dataset.fallback = 'true';
+                    target.src = 'assets/停泊位示意图-0916.png';
+                  }
+                }}
+              />
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+              <span className="text-[11px]">包含1-4号码头、5号2万吨船台、6号平船台全部泊位号与组合分布</span>
+              <button
+                type="button"
+                onClick={() => setShowZoomModal(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+              >
+                关闭预览
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

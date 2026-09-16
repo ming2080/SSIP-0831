@@ -6,7 +6,11 @@ import {
   ShieldAlert, 
   BellRing, 
   ServerCrash,
-  Ship
+  Ship,
+  UserCheck,
+  UserCog,
+  FolderTree,
+  Radio
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { ViewType } from '@/src/types';
@@ -21,11 +25,15 @@ interface SidebarProps {
 const navItems: { id: ViewType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: '驾驶舱', icon: LayoutDashboard },
   { id: 'projects', label: '项目管理', icon: FolderKanban },
-  { id: 'models', label: '船模管理', icon: Ship },
   { id: 'personnel', label: '人员定位', icon: Users },
+  { id: 'personnel_mgmt', label: '人员管理', icon: UserCheck },
+  { id: 'team_mgmt', label: '组织管理', icon: FolderTree },
   { id: 'fence', label: '电子围栏', icon: ShieldAlert },
   { id: 'alarms', label: '告警配置', icon: BellRing },
+  { id: 'tags', label: '定位标签', icon: Radio },
   { id: 'devices', label: '设备管理', icon: ServerCrash },
+  { id: 'user_mgmt', label: '用户管理', icon: UserCog },
+  { id: 'models', label: '航模管理', icon: Ship },
 ];
 
 export function Sidebar({ currentView, onChangeView, currentUser, onLogout }: SidebarProps) {

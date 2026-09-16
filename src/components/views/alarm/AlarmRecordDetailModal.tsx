@@ -186,6 +186,7 @@ export function AlarmRecordDetailModal({
                 {(() => {
                   const isEnv = record.policyType.includes('气') || 
                     record.policyType.includes('环境') || 
+                    record.policyType.includes('烟') || 
                     ['气', '温', '湿', '尘', '氧', '烟', '水', '毒', '压', '风'].some(k => record.policyName.includes(k)) ||
                     record.conditionDesc.includes('ppm') ||
                     record.conditionDesc.includes('浓度');

@@ -42,7 +42,7 @@ export interface AlarmEventRecord {
   policyId: number;
   policyName: string; // 对应告警策略名称，如 '1号船台密闭舱气体浓度多级告警'
   policyVersion: string; // 如 'V2'
-  policyType: string; // 策略类型：气体告警 / 超出活动范围 / 受限空间滞留 / 未佩戴安全帽 / 厂区玩手机 / 进入危险区域
+  policyType: string; // 策略类型：人员进入 / 气体告警 / 安全帽脱落 / 厂区吸烟 / 厂区玩手机 / 异常停留 / 烟感告警 / 标签防拆
   projectName: string; // 关联造船工程项目或空
   projectType?: 'shipbuilding' | 'none'; // 项目关联情况：造船项目关联 vs 无项目关联 (厂区范围内)
   isRealtime: boolean; // 是否当前实时未闭环告警 (true: 实时告警, false: 历史告警)

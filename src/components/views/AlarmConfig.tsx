@@ -14,7 +14,7 @@ import {
   Clock,
   Filter
 } from 'lucide-react';
-import { INITIAL_ALARM_RULES, AlarmRuleItem } from '@/src/data/alarmData';
+import { INITIAL_ALARM_RULES, AlarmRuleItem, ALARM_POLICY_TYPES } from '@/src/data/alarmData';
 import { AlarmFormModal } from './AlarmFormModal';
 import { AlarmDetailModal } from './AlarmDetailModal';
 import { AlarmLiveAndHistoryView } from './alarm/AlarmLiveAndHistoryView';
@@ -175,13 +175,9 @@ export function AlarmConfig() {
                     className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 bg-white cursor-pointer hover:border-slate-300 transition-colors"
                   >
                     <option value="">全部策略类型</option>
-                    <option value="气体告警">气体告警</option>
-                    <option value="厂区玩手机">厂区玩手机</option>
-                    <option value="未佩戴安全帽">未佩戴安全帽</option>
-                    <option value="进入危险区域">进入危险区域</option>
-                    <option value="受限空间滞留">受限空间滞留</option>
-                    <option value="长时间静止">长时间静止</option>
-                    <option value="超出活动范围">超出活动范围</option>
+                    {ALARM_POLICY_TYPES.map(pt => (
+                      <option key={pt} value={pt}>{pt}</option>
+                    ))}
                   </select>
                 </div>
 

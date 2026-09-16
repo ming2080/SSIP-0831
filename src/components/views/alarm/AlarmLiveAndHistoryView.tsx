@@ -34,6 +34,7 @@ export function getPolicyTriggerCategory(record: AlarmEventRecord): AlarmTrigger
   if (
     record.policyType.includes('气') || 
     record.policyType.includes('环境') ||
+    record.policyType.includes('烟') ||
     envKeywords.some(k => record.policyName.includes(k)) ||
     record.conditionDesc.includes('ppm') ||
     record.conditionDesc.includes('浓度')
