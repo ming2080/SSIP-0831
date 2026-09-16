@@ -314,10 +314,6 @@ export function OvertimeManagement() {
             <div className="text-2xl font-bold text-slate-800 font-mono mt-0.5">
               {metrics.totalToday} <span className="text-xs font-normal text-slate-500">人</span>
             </div>
-            <div className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              现场定位标签正常通信
-            </div>
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
             <Users className="w-5 h-5" />
@@ -330,7 +326,6 @@ export function OvertimeManagement() {
             <div className="text-2xl font-bold text-blue-600 font-mono mt-0.5">
               {metrics.totalHours} <span className="text-xs font-normal text-slate-500">小时</span>
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">按生产合拢与调试节点核算</div>
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <Clock className="w-5 h-5" />
@@ -343,7 +338,6 @@ export function OvertimeManagement() {
             <div className="text-2xl font-bold text-amber-600 font-mono mt-0.5">
               {metrics.pendingCount} <span className="text-xs font-normal text-slate-500">单</span>
             </div>
-            <div className="text-[10px] text-amber-600 mt-1">请车间/制造部主管尽快核实</div>
           </div>
           <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
             <AlertCircle className="w-5 h-5" />
@@ -356,7 +350,6 @@ export function OvertimeManagement() {
             <div className="text-2xl font-bold text-rose-600 font-mono mt-0.5">
               {metrics.specialCount} <span className="text-xs font-normal text-slate-500">处</span>
             </div>
-            <div className="text-[10px] text-rose-600 mt-1">动火/密闭空间双人安全监护</div>
           </div>
           <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
             <ShieldAlert className="w-5 h-5" />
