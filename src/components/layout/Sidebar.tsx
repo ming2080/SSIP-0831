@@ -10,7 +10,8 @@ import {
   UserCheck,
   UserCog,
   FolderTree,
-  Radio
+  Radio,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { ViewType } from '@/src/types';
@@ -27,6 +28,7 @@ const navItems: { id: ViewType; label: string; icon: React.ElementType }[] = [
   { id: 'projects', label: '项目管理', icon: FolderKanban },
   { id: 'personnel', label: '人员定位', icon: Users },
   { id: 'personnel_mgmt', label: '人员管理', icon: UserCheck },
+  { id: 'overtime', label: '加班管理', icon: Clock },
   { id: 'team_mgmt', label: '组织管理', icon: FolderTree },
   { id: 'fence', label: '电子围栏', icon: ShieldAlert },
   { id: 'alarms', label: '告警配置', icon: BellRing },

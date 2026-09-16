@@ -13,6 +13,7 @@ import { PersonnelManagement } from '../views/PersonnelManagement';
 import { UserManagement } from '../views/UserManagement';
 import { TeamManagement } from '../views/TeamManagement';
 import { TagManagement } from '../views/TagManagement';
+import { OvertimeManagement } from '../views/OvertimeManagement';
 
 interface LayoutProps {
   currentUser?: { username: string; role: string; name: string };
@@ -66,6 +67,7 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
           onNavigateToTeams={() => setCurrentView('team_mgmt')}
         />
       );
+      case 'overtime': return <OvertimeManagement />;
       case 'team_mgmt': return (
         <TeamManagement 
           onNavigateToPersonnel={(deptId) => {
@@ -99,6 +101,7 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
       case 'models': return '航模管理';
       case 'personnel': return '人员定位';
       case 'personnel_mgmt': return '人员管理';
+      case 'overtime': return '加班管理';
       case 'tags': return '定位标签管理';
       case 'team_mgmt': return '组织管理';
       case 'user_mgmt': return '用户管理';

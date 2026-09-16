@@ -3,6 +3,7 @@ export type ViewType =
   | 'projects' 
   | 'personnel' 
   | 'personnel_mgmt'
+  | 'overtime'
   | 'team_mgmt'
   | 'tags'
   | 'user_mgmt'
