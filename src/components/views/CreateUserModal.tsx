@@ -99,6 +99,22 @@ export function CreateUserModal({
       alert('请输入用户昵称（姓名）');
       return;
     }
+    if (!deptName.trim()) {
+      alert('请选择或输入归属部门');
+      return;
+    }
+    if (!phonenumber.trim()) {
+      alert('请输入手机号码');
+      return;
+    }
+    if (!password.trim()) {
+      alert('请输入初始密码');
+      return;
+    }
+    if (!status) {
+      alert('请选择账号状态');
+      return;
+    }
 
     onSave({
       userName: userName.trim(),
@@ -269,15 +285,18 @@ export function CreateUserModal({
 
             {/* 手机号码 */}
             <div className="space-y-1">
-              <label className="block font-medium text-slate-700">手机号码</label>
+              <label className="block font-medium text-slate-700">
+                手机号码 <span className="text-rose-500">*</span>
+              </label>
               <input 
                 type="tel"
+                required
                 value={phonenumber}
                 onChange={e => setPhonenumber(e.target.value)}
-                placeholder="选填，如: 13705910045"
+                placeholder="请输入手机号码，如: 13705910045"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-blue-500 font-mono text-xs"
               />
-              <span className="text-[10px] text-slate-400">联系电话，用于通知推送</span>
+              <span className="text-[10px] text-slate-400">联系电话，用于通知推送与登录验证</span>
             </div>
           </div>
 
@@ -285,25 +304,30 @@ export function CreateUserModal({
           <div className="grid grid-cols-2 gap-3.5">
             <div className="space-y-1">
               <label className="block font-medium text-slate-700">
-                {editingUser ? '重置登录密码 (选填)' : '初始登录密码'}
+                初始密码 <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="password"
+                required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={editingUser ? '留空则保持原密码' : '默认: 123456'}
+                placeholder="请输入初始密码（默认: 123456）"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-blue-500 font-mono text-xs"
               />
+              <span className="text-[10px] text-slate-400">系统初次分配登录凭证</span>
             </div>
 
             {/* 状态 (正常 / 停用) */}
             <div className="space-y-1">
-              <label className="block font-medium text-slate-700">账号状态</label>
+              <label className="block font-medium text-slate-700">
+                账号状态 <span className="text-rose-500">*</span>
+              </label>
               <div className="flex items-center gap-4 pt-2">
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input 
                     type="radio" 
                     name="status_radio" 
+                    required
                     checked={status === '0'} 
                     onChange={() => setStatus('0')}
                     className="text-blue-600 focus:ring-blue-500"
@@ -314,6 +338,7 @@ export function CreateUserModal({
                   <input 
                     type="radio" 
                     name="status_radio" 
+                    required
                     checked={status === '1'} 
                     onChange={() => setStatus('1')}
                     className="text-slate-500 focus:ring-slate-400"
@@ -321,6 +346,7 @@ export function CreateUserModal({
                   <span className="text-xs text-slate-500">停用 (锁定)</span>
                 </label>
               </div>
+              <span className="text-[10px] text-slate-400">停用后该账号将无法登录系统</span>
             </div>
           </div>
 

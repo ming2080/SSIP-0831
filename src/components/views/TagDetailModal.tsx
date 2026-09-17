@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { X, Radio, Battery, Wifi, User, Clock, Tag, FileText } from 'lucide-react';
+import { X, Radio, Battery, Wifi, User, Clock, Tag } from 'lucide-react';
 import { LocationTagItem } from '@/src/data/tagData';
 
 interface TagDetailModalProps {
@@ -159,13 +159,6 @@ export function TagDetailModal({
               </span>
             </div>
           </div>
-
-          {tag.remark && (
-            <div className="p-2.5 bg-slate-50 rounded-lg text-slate-600 border border-slate-200 flex items-start gap-1.5 text-[11px]">
-              <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-              <span>备注：{tag.remark}</span>
-            </div>
-          )}
         </div>
 
         {/* 底部操作 */}

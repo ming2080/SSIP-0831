@@ -32,7 +32,8 @@ import {
   Layers,
   Activity,
   FolderTree,
-  History
+  History,
+  X
 } from 'lucide-react';
 import { 
   DhrPersonnelItem, 
@@ -120,6 +121,9 @@ export function PersonnelManagement({ onOpenUserManagement, onNavigateToTeams, t
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailPerson, setDetailPerson] = useState<DhrPersonnelItem | null>(null);
   const [detailModalMode, setDetailModalMode] = useState<'view' | 'create' | 'edit'>('view');
+
+  // 回收卡二次确认弹窗状态
+  const [confirmUnbindPerson, setConfirmUnbindPerson] = useState<DhrPersonnelItem | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -603,7 +607,7 @@ export function PersonnelManagement({ onOpenUserManagement, onNavigateToTeams, t
                           {person.tagCode && person.tagStatus === 'bound' ? (
                             <button 
                               type="button"
-                              onClick={() => handleSaveTagIssue(person.empID, undefined, 'unbind')}
+                              onClick={() => setConfirmUnbindPerson(person)}
                               className="text-rose-600 hover:text-rose-800 font-medium transition-colors cursor-pointer"
                               title="回收解绑定位工牌标签"
                             >
@@ -709,6 +713,84 @@ export function PersonnelManagement({ onOpenUserManagement, onNavigateToTeams, t
         mode={detailModalMode}
         onSave={handleSavePersonnel}
       />
+
+      {/* 回收定位标签二次确认弹窗 */}
+      {confirmUnbindPerson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col text-slate-800">
+            {/* 头部 */}
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">回收定位标签确认</h3>
+                  <p className="text-[11px] text-slate-500">人员工牌标签解绑操作</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmUnbindPerson(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 内容 */}
+            <div className="p-5 space-y-3.5 text-xs">
+              <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">目标员工：</span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {confirmUnbindPerson.name} 
+                    <span className="font-normal font-mono text-xs text-slate-500 ml-1">({confirmUnbindPerson.empcode || confirmUnbindPerson.empID})</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">所属部门：</span>
+                  <span className="text-slate-700 truncate max-w-[200px]" title={confirmUnbindPerson.deptname}>
+                    {confirmUnbindPerson.deptname}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-rose-200/60">
+                  <span className="text-rose-700 font-medium">当前绑定标签：</span>
+                  <span className="font-mono font-bold text-rose-700 bg-white px-2 py-0.5 rounded border border-rose-300">
+                    {confirmUnbindPerson.tagCode}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-slate-600 leading-relaxed text-xs">
+                确定要回收该员工当前佩戴的定位标签吗？回收后该标签将与人员解除绑定，恢复为<strong className="text-rose-600 font-semibold">“未使用”</strong>空闲状态，可重新发放给其他人员。
+              </p>
+            </div>
+
+            {/* 底部操作 */}
+            <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmUnbindPerson(null)}
+                className="px-3.5 py-1.5 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors font-medium text-xs cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = confirmUnbindPerson;
+                  setConfirmUnbindPerson(null);
+                  handleSaveTagIssue(target.empID, undefined, 'unbind');
+                }}
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-xs cursor-pointer"
+              >
+                确认回收
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

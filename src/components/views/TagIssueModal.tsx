@@ -10,7 +10,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Radio, 
-  Battery, 
   CheckCircle2, 
   AlertTriangle, 
   RotateCcw, 
@@ -36,7 +35,6 @@ export function TagIssueModal({ isOpen, onClose, person, onSave }: TagIssueModal
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [customTagInput, setCustomTagInput] = useState<string>('');
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
-  const [remarks, setRemarks] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -49,7 +47,6 @@ export function TagIssueModal({ isOpen, onClose, person, onSave }: TagIssueModal
         setIsCustomMode(true);
       }
       setCustomTagInput('');
-      setRemarks('');
     }
   }, [isOpen, person]);
 
@@ -217,46 +214,16 @@ export function TagIssueModal({ isOpen, onClose, person, onSave }: TagIssueModal
                           onChange={() => setSelectedTag(tag.tagCode)}
                           className="text-blue-600 focus:ring-blue-500"
                         />
-                        <div>
-                          <span className="font-bold text-slate-900 font-mono">{tag.tagCode}</span>
-                          <span className="text-slate-400 text-[11px] ml-2">({tag.remark || '标准定位标签'})</span>
-                        </div>
+                        <span className="font-bold text-slate-900 font-mono text-xs">{tag.tagCode}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {tag.batteryLevel === 'low' ? (
-                          <span className="text-[11px] text-rose-600 font-bold flex items-center gap-1">
-                            <Battery className="w-3.5 h-3.5 text-rose-500" />
-                            <span>低电量</span>
-                          </span>
-                        ) : tag.batteryLevel === 'normal' ? (
-                          <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1">
-                            <Battery className="w-3.5 h-3.5 text-slate-400" />
-                            <span>正常电量</span>
-                          </span>
-                        ) : null}
-                        <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-0.5 rounded font-medium">
-                          未使用
-                        </span>
-                      </div>
+                      <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded font-medium">
+                        {tag.tagStatus === 'used' ? '已使用' : '未使用'}
+                      </span>
                     </div>
                   ))
                 )}
               </div>
             )}
-          </div>
-
-          {/* 发卡/收卡备注 */}
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
-              操作备注 (选填)：
-            </label>
-            <input 
-              type="text"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="如：入场安全培训合格后发卡、损坏换发、离场交回等"
-              className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-blue-500"
-            />
           </div>
 
         </div>
