@@ -2,731 +2,680 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * 加班管理功能模块
- * 涵盖：加班申报、安全交底核查、审批流转、特种作业现场双人监护追踪、工时报表导出
+ * 智慧船厂 - 东南基地加班登记与安全岗位在岗告警联动管理
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Clock, 
   Search, 
-  Filter, 
   Plus, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  Download, 
-  RotateCcw, 
-  Building2, 
-  FolderKanban, 
-  MapPin, 
-  ShieldAlert, 
-  Radio, 
-  Check, 
+  RotateCw, 
+  FileText, 
+  Trash2, 
   Eye, 
-  Sparkles,
-  Layers,
-  HardHat,
-  Calendar,
-  Users
+  Clock, 
+  ShieldAlert, 
+  ShieldCheck, 
+  AlertTriangle, 
+  Users, 
+  Building2, 
+  Filter,
+  CheckCircle2,
+  BellRing,
+  Phone,
+  Flame,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { 
   OvertimeRecord, 
-  OvertimeType, 
-  OvertimeStatus,
   getStoredOvertimeRecords, 
   saveStoredOvertimeRecords 
 } from '@/src/data/overtimeData';
-import { MOCK_PROJECTS } from '@/src/data/mockProjects';
 import { CreateOvertimeModal } from './overtime/CreateOvertimeModal';
 import { OvertimeDetailModal } from './overtime/OvertimeDetailModal';
-import { OvertimeApproveModal } from './overtime/OvertimeApproveModal';
+import { OvertimeDailyReportView } from './overtime/OvertimeDailyReportView';
+import { OvertimeMonthlyReportView } from './overtime/OvertimeMonthlyReportView';
+import { ViewType } from '@/src/types';
 
-export function OvertimeManagement() {
+interface OvertimeManagementProps {
+  onChangeView?: (view: ViewType) => void;
+}
+
+export function OvertimeManagement({ onChangeView }: OvertimeManagementProps) {
+  // 顶部大 Tab 切换: 'daily_report' (加班日报) | 'monthly_report' (加班月报) | 'registration' (加班登记表)
+  const [activeTab, setActiveTab] = useState<'daily_report' | 'monthly_report' | 'registration'>('daily_report');
+
+  // 数据集状态
   const [records, setRecords] = useState<OvertimeRecord[]>(() => getStoredOvertimeRecords());
-  
-  // 筛选状态
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [projectFilter, setProjectFilter] = useState<string>('ALL');
-  const [onlySpecialWork, setOnlySpecialWork] = useState<boolean>(false);
 
-  // 选中的记录（批量操作）
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // 模态框状态
+  // 弹窗状态
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [detailRecord, setDetailRecord] = useState<OvertimeRecord | null>(null);
-  const [approveRecord, setApproveRecord] = useState<OvertimeRecord | null>(null);
+  const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<OvertimeRecord | null>(null);
 
-  // 监听跨组件变更
+  // 筛选字段
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [filterDept, setFilterDept] = useState<string>('');
+  const [filterContractor, setFilterContractor] = useState<string>('');
+  const [filterSafetyStatus, setFilterSafetyStatus] = useState<'all' | 'present' | 'absent'>('all');
+
+  // 监听广播联动更新
   useEffect(() => {
-    const handleUpdate = (e: any) => {
+    const handleOvertimeUpdate = (e: any) => {
       if (e.detail?.records) {
         setRecords(e.detail.records);
       }
     };
-    window.addEventListener('overtime_data_updated', handleUpdate);
-    return () => window.removeEventListener('overtime_data_updated', handleUpdate);
+    window.addEventListener('overtime_data_updated', handleOvertimeUpdate);
+    return () => window.removeEventListener('overtime_data_updated', handleOvertimeUpdate);
   }, []);
 
+  // 保存与广播更新
   const updateRecords = (newRecords: OvertimeRecord[]) => {
     setRecords(newRecords);
     saveStoredOvertimeRecords(newRecords);
   };
 
-  // 过滤后的数据
+  // 核心统计指标
+  const stats = useMemo(() => {
+    const totalCount = records.length;
+    const totalWorkers = records.reduce((sum, r) => sum + (Number(r.workerCount) || 0), 0);
+    const presentCount = records.filter(r => r.safetyStatus === 'present').length;
+    const absentAlertCount = records.filter(r => r.safetyStatus === 'absent').length;
+    const highRiskCount = records.filter(r => r.isHotWork || r.isConfinedSpace).length;
+    const presentRate = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(1) : '100.0';
+
+    return {
+      totalCount,
+      totalWorkers,
+      presentCount,
+      absentAlertCount,
+      highRiskCount,
+      presentRate
+    };
+  }, [records]);
+
+  // 部门与施工单位去重列表
+  const { deptList, contractorList } = useMemo(() => {
+    const depts = new Set<string>();
+    const contractors = new Set<string>();
+    records.forEach(r => {
+      if (r.deptName) depts.add(r.deptName);
+      if (r.contractor) contractors.add(r.contractor);
+    });
+    return {
+      deptList: Array.from(depts),
+      contractorList: Array.from(contractors)
+    };
+  }, [records]);
+
+  // 过滤后数据列表
   const filteredRecords = useMemo(() => {
-    return records.filter(item => {
-      // 关键字搜索
+    return records.filter(r => {
+      // 关键字检索：施工船号、施工区域、施工单位、加班项目、施工人员、填报人、安全员
       if (searchKeyword.trim()) {
-        const kw = searchKeyword.toLowerCase();
-        const matchName = item.empName.toLowerCase().includes(kw);
-        const matchCode = item.empCode.toLowerCase().includes(kw);
-        const matchJob = item.postJob.toLowerCase().includes(kw);
-        const matchId = item.id.toLowerCase().includes(kw);
-        const matchArea = item.workArea.toLowerCase().includes(kw);
-        const matchReason = item.reason.toLowerCase().includes(kw);
-        if (!matchName && !matchCode && !matchJob && !matchId && !matchArea && !matchReason) {
-          return false;
-        }
+        const kw = searchKeyword.trim().toLowerCase();
+        const matchKw = 
+          r.shipNo.toLowerCase().includes(kw) ||
+          r.workArea.toLowerCase().includes(kw) ||
+          r.contractor.toLowerCase().includes(kw) ||
+          r.projectName.toLowerCase().includes(kw) ||
+          r.workerList.toLowerCase().includes(kw) ||
+          r.reporter.toLowerCase().includes(kw) ||
+          r.safetyOfficer.toLowerCase().includes(kw);
+        if (!matchKw) return false;
       }
 
-      // 状态筛选
-      if (statusFilter !== 'ALL' && item.status !== statusFilter) {
-        return false;
-      }
+      // 部门筛选
+      if (filterDept && r.deptName !== filterDept) return false;
 
-      // 类型筛选
-      if (typeFilter !== 'ALL' && item.overtimeType !== typeFilter) {
-        return false;
-      }
+      // 施工单位筛选
+      if (filterContractor && r.contractor !== filterContractor) return false;
 
-      // 项目筛选
-      if (projectFilter !== 'ALL' && item.projectId !== projectFilter) {
-        return false;
-      }
-
-      // 特种作业筛选
-      if (onlySpecialWork && !item.isSpecialWork) {
-        return false;
+      // 安全岗位在岗状态筛选
+      if (filterSafetyStatus !== 'all') {
+        if (filterSafetyStatus === 'present' && r.safetyStatus !== 'present') return false;
+        if (filterSafetyStatus === 'absent' && r.safetyStatus !== 'absent') return false;
       }
 
       return true;
     });
-  }, [records, searchKeyword, statusFilter, typeFilter, projectFilter, onlySpecialWork]);
+  }, [records, searchKeyword, filterDept, filterContractor, filterSafetyStatus]);
 
-  // 统计指标
-  const metrics = useMemo(() => {
-    const totalToday = records.filter(r => r.date === '2026-09-16' && r.status !== 'rejected').length;
-    const totalHours = records
-      .filter(r => r.status === 'approved' || r.status === 'completed')
-      .reduce((sum, r) => sum + r.hours, 0);
-    const pendingCount = records.filter(r => r.status === 'pending').length;
-    const specialCount = records.filter(r => r.isSpecialWork && r.status !== 'rejected').length;
-
-    return {
-      totalToday,
-      totalHours: Math.round(totalHours * 10) / 10,
-      pendingCount,
-      specialCount
-    };
-  }, [records]);
-
-  // 新增申报保存
+  // 处理提交新记录
   const handleCreateSubmit = (newRecord: OvertimeRecord) => {
-    const next = [newRecord, ...records];
-    updateRecords(next);
+    const updated = [newRecord, ...records];
+    updateRecords(updated);
   };
 
-  // 审批提交
-  const handleApproveConfirm = (
-    target: OvertimeRecord, 
-    action: 'approved' | 'rejected', 
-    remark: string, 
-    approver: string
-  ) => {
-    const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
-    const next = records.map(r => {
-      if (r.id === target.id) {
+  // 切换安全员在岗状态 (触发或核销告警)
+  const handleToggleSafetyStatus = (targetRecord: OvertimeRecord) => {
+    const isCurrentlyAbsent = targetRecord.safetyStatus === 'absent';
+    const nextStatus: 'present' | 'absent' = isCurrentlyAbsent ? 'present' : 'absent';
+    const hasActiveAlert = nextStatus === 'absent';
+
+    const updated = records.map(r => {
+      if (r.id === targetRecord.id) {
         return {
           ...r,
-          status: action,
-          approver,
-          approveTime: now,
-          remark
+          safetyStatus: nextStatus,
+          hasActiveAlert,
+          alertReason: hasActiveAlert 
+            ? `加班现场缺少在岗安全员监护 (${r.safetyOfficer})` 
+            : undefined,
+          safetyOfficer: nextStatus === 'present' 
+            ? (r.safetyOfficer === '未在岗/缺席' ? '当班安全员' : r.safetyOfficer)
+            : '未在岗/缺席'
         };
       }
       return r;
     });
-    updateRecords(next);
-  };
 
-  // 完工核销
-  const handleComplete = (target: OvertimeRecord) => {
-    const next = records.map(r => {
-      if (r.id === target.id) {
-        return {
-          ...r,
-          status: 'completed' as OvertimeStatus
-        };
-      }
-      return r;
-    });
-    updateRecords(next);
-  };
+    updateRecords(updated);
 
-  // 批量批准待审批单
-  const handleBatchApprove = () => {
-    const pendingSelected = records.filter(r => selectedIds.has(r.id) && r.status === 'pending');
-    if (pendingSelected.length === 0) {
-      alert('请先勾选状态为“待审批”的加班记录');
-      return;
-    }
-
-    if (confirm(`确定一键批量批准选中的 ${pendingSelected.length} 条加班申请吗？`)) {
-      const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
-      const next = records.map(r => {
-        if (selectedIds.has(r.id) && r.status === 'pending') {
-          return {
-            ...r,
-            status: 'approved' as OvertimeStatus,
-            approver: '张工 (系统管理员/批量审批)',
-            approveTime: now,
-            remark: '批量审批同意，已确认人员持证与定位标签在线。'
-          };
-        }
-        return r;
+    // 同步更新详情弹窗中的记录
+    if (selectedRecordForDetail && selectedRecordForDetail.id === targetRecord.id) {
+      setSelectedRecordForDetail({
+        ...selectedRecordForDetail,
+        safetyStatus: nextStatus,
+        hasActiveAlert,
+        safetyOfficer: nextStatus === 'present' ? '当班安全员' : '未在岗/缺席'
       });
-      updateRecords(next);
-      setSelectedIds(new Set());
     }
   };
 
-  // 导出 CSV 报表
-  const handleExportCsv = () => {
-    if (filteredRecords.length === 0) {
-      alert('当前暂无符合条件的加班记录可导出');
-      return;
-    }
-
-    const headers = [
-      '加班单号',
-      '员工姓名',
-      '员工工号',
-      '所属部门班组',
-      '岗位工种',
-      '施工项目',
-      '施工作业区域',
-      '加班类型',
-      '加班日期',
-      '时段区间',
-      '核定工时(h)',
-      '特种高危作业',
-      '安全监护人',
-      '审批状态',
-      '申报人',
-      '申报时间',
-      '审批人',
-      '审批意见'
-    ];
-
-    const typeMap: Record<OvertimeType, string> = {
-      workday: '工作日延时',
-      weekend: '休息日加班',
-      holiday: '法定节假日'
-    };
-
-    const statusMap: Record<OvertimeStatus, string> = {
-      pending: '待审批',
-      approved: '已批准',
-      completed: '已完工',
-      rejected: '已驳回'
-    };
-
-    const rows = filteredRecords.map(r => [
-      `"${r.id}"`,
-      `"${r.empName}"`,
-      `"${r.empCode}"`,
-      `"${r.deptName}"`,
-      `"${r.postJob}"`,
-      `"${r.projectName}"`,
-      `"${r.workArea}"`,
-      `"${typeMap[r.overtimeType] || r.overtimeType}"`,
-      `"${r.date}"`,
-      `"${r.startTime}~${r.endTime}"`,
-      r.hours,
-      `"${r.isSpecialWork ? r.specialWorkType || '是' : '否'}"`,
-      `"${r.safetySupervisor}"`,
-      `"${statusMap[r.status] || r.status}"`,
-      `"${r.applicant}"`,
-      `"${r.applyTime}"`,
-      `"${r.approver || ''}"`,
-      `"${(r.remark || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `智慧船厂_加班考勤报表_${new Date().toISOString().substring(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // 全选/反选
-  const handleToggleSelectAll = () => {
-    if (selectedIds.size === filteredRecords.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredRecords.map(r => r.id)));
+  // 删除某条加班记录
+  const handleDeleteRecord = (id: string) => {
+    if (window.confirm(`确定删除序号为 #${id} 的加班登记记录吗？`)) {
+      const updated = records.filter(r => r.id !== id);
+      updateRecords(updated);
     }
   };
 
-  const handleToggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    setSelectedIds(next);
-  };
-
-  const resetFilters = () => {
+  // 重置筛选条件
+  const handleResetFilters = () => {
     setSearchKeyword('');
-    setStatusFilter('ALL');
-    setTypeFilter('ALL');
-    setProjectFilter('ALL');
-    setOnlySpecialWork(false);
+    setFilterDept('');
+    setFilterContractor('');
+    setFilterSafetyStatus('all');
   };
 
   return (
-    <div className="space-y-4">
-      {/* 顶部指标概览看板 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+    <div className="p-5 space-y-4 bg-slate-50 min-h-screen text-slate-800">
+      {/* 顶部 Tab 导览选项 */}
+      <div className="bg-white p-2.5 rounded-xl shadow-2xs border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <button
+            onClick={() => setActiveTab('daily_report')}
+            className={`px-3.5 py-2 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'daily_report'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>加班日报与统计</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('monthly_report')}
+            className={`px-3.5 py-2 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'monthly_report'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>加班月报与汇总</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('registration')}
+            className={`px-3.5 py-2 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'registration'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>加班登记表 (安全在岗联动)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {onChangeView && (
+            <button
+              onClick={() => onChangeView('alarms')}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <BellRing className="w-3.5 h-3.5 text-rose-500" />
+              <span>进入告警中心</span>
+            </button>
+          )}
+
+          {activeTab === 'registration' && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>新增加班登记</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 视图分发 */}
+      {activeTab === 'daily_report' ? (
+        <OvertimeDailyReportView 
+          onNavigateToTracking={(personName) => {
+            if (onChangeView) onChangeView('personnel');
+          }} 
+        />
+      ) : activeTab === 'monthly_report' ? (
+        <OvertimeMonthlyReportView />
+      ) : (
+        <>
+          {/* 关键安全指标统计卡片 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* 1. 总加班登记项数 */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-slate-400">今日在厂加班人数</div>
-            <div className="text-2xl font-bold text-slate-800 font-mono mt-0.5">
-              {metrics.totalToday} <span className="text-xs font-normal text-slate-500">人</span>
+            <span className="text-xs font-medium text-slate-500 block mb-1">加班申报项数</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold font-mono text-slate-900">{stats.totalCount}</span>
+              <span className="text-xs text-slate-400">项</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="p-2.5 rounded-lg bg-slate-100 text-slate-600">
+            <FileText className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* 2. 加班施工总人数 */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-medium text-slate-500 block mb-1">加班施工总人数</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold font-mono text-blue-600">{stats.totalWorkers}</span>
+              <span className="text-xs text-slate-400">人</span>
+            </div>
+          </div>
+          <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+        {/* 3. 安全岗位在岗项数 */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-slate-400">本月核定有效工时</div>
-            <div className="text-2xl font-bold text-blue-600 font-mono mt-0.5">
-              {metrics.totalHours} <span className="text-xs font-normal text-slate-500">小时</span>
+            <span className="text-xs font-medium text-slate-500 block mb-1">安全岗位在岗项</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold font-mono text-emerald-600">{stats.presentCount}</span>
+              <span className="text-xs text-slate-400">/ {stats.totalCount} ({stats.presentRate}%)</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
+          <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600">
+            <ShieldCheck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+        {/* 4. 安全岗位缺岗告警项 (核心高亮) */}
+        <button
+          onClick={() => setFilterSafetyStatus(filterSafetyStatus === 'absent' ? 'all' : 'absent')}
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+            stats.absentAlertCount > 0
+              ? 'bg-rose-50/90 border-rose-300 shadow-xs hover:border-rose-400'
+              : 'bg-white border-slate-200'
+          }`}
+        >
           <div>
-            <div className="text-[11px] font-medium text-slate-400">待审批加班单</div>
-            <div className="text-2xl font-bold text-amber-600 font-mono mt-0.5">
-              {metrics.pendingCount} <span className="text-xs font-normal text-slate-500">单</span>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className={`text-xs font-bold ${stats.absentAlertCount > 0 ? 'text-rose-800' : 'text-slate-500'}`}>
+                安全岗位缺岗告警
+              </span>
+              {stats.absentAlertCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              )}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className={`text-2xl font-bold font-mono ${stats.absentAlertCount > 0 ? 'text-rose-700' : 'text-slate-400'}`}>
+                {stats.absentAlertCount}
+              </span>
+              <span className={`text-xs ${stats.absentAlertCount > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
+                项告警
+              </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertCircle className="w-5 h-5" />
+          <div className={`p-2.5 rounded-lg ${stats.absentAlertCount > 0 ? 'bg-rose-600 text-white shadow-xs animate-bounce' : 'bg-slate-100 text-slate-400'}`}>
+            <AlertTriangle className="w-5 h-5" />
           </div>
-        </div>
+        </button>
 
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+        {/* 5. 特种作业管控 (动火与受限空间) */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-slate-400">特种/危大作业申报</div>
-            <div className="text-2xl font-bold text-rose-600 font-mono mt-0.5">
-              {metrics.specialCount} <span className="text-xs font-normal text-slate-500">处</span>
+            <span className="text-xs font-medium text-slate-500 block mb-1">动火/受限特种作业</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold font-mono text-amber-600">{stats.highRiskCount}</span>
+              <span className="text-xs text-slate-400">项</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-            <ShieldAlert className="w-5 h-5" />
+          <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
+            <Flame className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* 筛选过滤与操作栏 */}
-      <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* 左侧搜索与筛选 */}
-          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-            {/* 关键字搜索 */}
-            <div className="relative w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="搜索姓名、工号、区域或作业内容..."
-                className="w-full h-8 pl-8 pr-3 rounded-md border border-slate-200 bg-slate-50/70 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-              />
+      {/* 如果有缺岗告警，展示强烈的预警横幅 Banner */}
+      {stats.absentAlertCount > 0 && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-rose-600 text-white shrink-0">
+              <BellRing className="w-4 h-4 animate-bounce" />
             </div>
-
-            {/* 状态过滤 */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8 px-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            >
-              <option value="ALL">全部状态</option>
-              <option value="pending">待审批</option>
-              <option value="approved">已批准 (作业中)</option>
-              <option value="completed">已完工</option>
-              <option value="rejected">已驳回</option>
-            </select>
-
-            {/* 加班类型 */}
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-8 px-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            >
-              <option value="ALL">全部加班类型</option>
-              <option value="workday">工作日延时</option>
-              <option value="weekend">休息日加班</option>
-              <option value="holiday">法定节假日</option>
-            </select>
-
-            {/* 项目过滤 */}
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-8 px-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[180px] truncate"
-            >
-              <option value="ALL">全部船舶项目</option>
-              {MOCK_PROJECTS.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-
-            {/* 特种作业勾选 */}
-            <label className="inline-flex items-center text-xs text-slate-600 select-none cursor-pointer bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={onlySpecialWork}
-                onChange={(e) => setOnlySpecialWork(e.target.checked)}
-                className="mr-1.5 text-blue-600 rounded border-slate-300"
-              />
-              仅显示特种/危大作业
-            </label>
-
-            {/* 重置 */}
-            {(searchKeyword || statusFilter !== 'ALL' || typeFilter !== 'ALL' || projectFilter !== 'ALL' || onlySpecialWork) && (
-              <button
-                onClick={resetFilters}
-                className="h-8 px-2.5 text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" />
-                重置
-              </button>
-            )}
+            <div className="text-xs">
+              <p className="font-bold">
+                检测到当前有 <span className="underline decoration-2 font-mono text-sm">{stats.absentAlertCount}</span> 项加班现场缺少安全岗位人员监护在岗！
+              </p>
+              <p className="text-rose-700 text-[11px] mt-0.5">
+                已自动向【告警管理中心】推送安全缺岗事件，请即时派员补位核销或联系填报人停工整改。
+              </p>
+            </div>
           </div>
 
-          {/* 右侧动作按钮 */}
           <div className="flex items-center gap-2">
-            {selectedIds.size > 0 && (
+            <button
+              onClick={() => setFilterSafetyStatus('absent')}
+              className="px-3 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs"
+            >
+              筛选缺岗告警项
+            </button>
+            {onChangeView && (
               <button
-                onClick={handleBatchApprove}
-                className="h-8 px-3 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
+                onClick={() => onChangeView('alarms')}
+                className="px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-rose-700 border border-rose-300 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
-                <Check className="w-3.5 h-3.5" />
-                批量批准 ({selectedIds.size})
+                <span>跳转告警大厅</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+        </div>
+      )}
 
+      {/* 筛选与搜索工具栏 */}
+      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+          {/* 关键字搜索 */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="w-4 h-4 absolute left-2.5 top-2 text-slate-400" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="搜索船号/区域/单位/项目/人员/安全员..."
+              className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+            />
+          </div>
+
+          {/* 在岗状态筛选 Tab */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
-              onClick={handleExportCsv}
-              className="h-8 px-3 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-md flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              onClick={() => setFilterSafetyStatus('all')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all ${
+                filterSafetyStatus === 'all' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              导出报表
+              全部状态
             </button>
-
             <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="h-8 px-3.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              onClick={() => setFilterSafetyStatus('present')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all ${
+                filterSafetyStatus === 'present' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'text-emerald-700 hover:text-emerald-900'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              加班申报
+              安全员在岗
+            </button>
+            <button
+              onClick={() => setFilterSafetyStatus('absent')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all flex items-center gap-1 ${
+                filterSafetyStatus === 'absent' ? 'bg-rose-600 text-white shadow-2xs font-bold' : 'text-rose-600 hover:text-rose-800'
+              }`}
+            >
+              <span>缺岗告警</span>
+              {stats.absentAlertCount > 0 && (
+                <span className="px-1 py-0.2 rounded-full text-[10px] bg-white text-rose-600 font-bold">
+                  {stats.absentAlertCount}
+                </span>
+              )}
             </button>
           </div>
+
+          {/* 部门筛选 */}
+          <select
+            value={filterDept}
+            onChange={(e) => setFilterDept(e.target.value)}
+            className="h-8 px-2.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-700 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">全部部门</option>
+            {deptList.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          {/* 施工单位筛选 */}
+          <select
+            value={filterContractor}
+            onChange={(e) => setFilterContractor(e.target.value)}
+            className="h-8 px-2.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-700 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">全部施工单位</option>
+            {contractorList.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleResetFilters}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>重置筛选</span>
+          </button>
+          <span className="text-slate-400 font-mono">共 {filteredRecords.length} 条</span>
         </div>
       </div>
 
-      {/* 数据表格 */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* 加班登记与安全员在岗表单 */}
+      <div className="bg-white rounded-xl shadow-2xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
-              <tr>
-                <th className="w-10 px-3 py-3 text-center">
-                  <input
-                    type="checkbox"
-                    checked={filteredRecords.length > 0 && selectedIds.size === filteredRecords.length}
-                    onChange={handleToggleSelectAll}
-                    className="rounded border-slate-300 text-blue-600"
-                  />
-                </th>
-                <th className="px-3 py-3">加班单号</th>
-                <th className="px-3 py-3">申报员工</th>
-                <th className="px-3 py-3">所属部门/班组</th>
-                <th className="px-3 py-3">施工船舶项目 / 作业区域</th>
-                <th className="px-3 py-3">加班类型</th>
-                <th className="px-3 py-3">加班时段与工时</th>
-                <th className="px-3 py-3">特种作业与安全监护</th>
-                <th className="px-3 py-3">审批状态</th>
-                <th className="px-3 py-3 text-right">操作</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-3 w-12 text-center">序号</th>
+                <th className="py-3 px-3">部门 / 日期</th>
+                <th className="py-3 px-3">加班时间段</th>
+                <th className="py-3 px-3">施工船号 / 作业区域</th>
+                <th className="py-3 px-3">施工单位 / 人数</th>
+                <th className="py-3 px-3">加班项目</th>
+                <th className="py-3 px-3">特种管控</th>
+                <th className="py-3 px-3">安全岗位人员</th>
+                <th className="py-3 px-3 text-center">在岗状态 & 告警联动</th>
+                <th className="py-3 px-3">填报人 / 电话</th>
+                <th className="py-3 px-3 w-28 text-center">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-100">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center">
-                      <Clock className="w-10 h-10 text-slate-300 stroke-1 mb-2" />
-                      <p className="text-sm font-medium text-slate-600">暂无符合条件的加班申报记录</p>
-                      <p className="text-xs text-slate-400 mt-1">您可以调整筛选条件或点击右上角“加班申报”新增记录</p>
+                  <td colSpan={11} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <Clock className="w-8 h-8 text-slate-300" />
+                      <span>未查找到匹配的加班登记记录</span>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((item) => {
-                  const isChecked = selectedIds.has(item.id);
+                filteredRecords.map((r) => (
+                  <tr 
+                    key={r.id} 
+                    className={`hover:bg-slate-50/80 transition-colors ${
+                      r.safetyStatus === 'absent' ? 'bg-rose-50/40' : ''
+                    }`}
+                  >
+                    {/* 序号 */}
+                    <td className="py-3 px-3 text-center font-mono font-bold text-slate-500">
+                      #{r.id}
+                    </td>
 
-                  return (
-                    <tr 
-                      key={item.id}
-                      className={`hover:bg-slate-50/70 transition-colors ${isChecked ? 'bg-blue-50/40' : ''}`}
-                    >
-                      {/* 选择框 */}
-                      <td className="px-3 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelect(item.id)}
-                          className="rounded border-slate-300 text-blue-600 cursor-pointer"
-                        />
-                      </td>
+                    {/* 部门 / 日期 */}
+                    <td className="py-3 px-3">
+                      <div className="font-bold text-slate-800">{r.deptName}</div>
+                      <div className="text-[11px] font-mono text-slate-400">{r.reportDate}</div>
+                    </td>
 
-                      {/* 单号 */}
-                      <td className="px-3 py-3 font-mono text-[11px] font-medium text-slate-600 whitespace-nowrap">
-                        {item.id}
-                      </td>
+                    {/* 加班时间段 */}
+                    <td className="py-3 px-3">
+                      <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                        {r.timeRange}
+                      </span>
+                    </td>
 
-                      {/* 员工信息 */}
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            {item.empName.slice(0, 1)}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                              <span>{item.empName}</span>
-                              <span className="font-mono text-[10px] text-slate-400">({item.empCode})</span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-medium">
-                              {item.postJob}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+                    {/* 施工船号 / 作业区域 */}
+                    <td className="py-3 px-3">
+                      <div className="font-mono font-bold text-slate-800">{r.shipNo}</div>
+                      <div className="text-slate-500 text-[11px] truncate max-w-[140px]" title={r.workArea}>
+                        {r.workArea}
+                      </div>
+                    </td>
 
-                      {/* 所属部门 */}
-                      <td className="px-3 py-3 max-w-[180px] truncate text-slate-600" title={item.deptName}>
-                        <div className="truncate text-xs">{item.deptName.split('//').pop()}</div>
-                        <div className="text-[10px] text-slate-400 truncate">{item.deptName.split('//')[0]}</div>
-                      </td>
+                    {/* 施工单位 / 人数 */}
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-800">{r.contractor}</div>
+                      <div className="text-[11px] font-bold text-emerald-600 font-mono">
+                        {r.workerCount} 人
+                      </div>
+                    </td>
 
-                      {/* 船舶项目与施工区域 */}
-                      <td className="px-3 py-3 max-w-[220px]">
-                        <div className="font-medium text-slate-900 truncate" title={item.projectName}>
-                          {item.projectName}
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 truncate mt-0.5" title={item.workArea}>
-                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{item.workArea}</span>
-                        </div>
-                      </td>
+                    {/* 加班项目 */}
+                    <td className="py-3 px-3 max-w-[180px]">
+                      <p className="font-mono text-slate-700 truncate" title={r.projectName}>
+                        {r.projectName}
+                      </p>
+                    </td>
 
-                      {/* 加班类型 */}
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        {item.overtimeType === 'workday' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                            工作日延时
+                    {/* 特种管控 */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1">
+                        {r.isHotWork ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 w-max">
+                            动火 ({r.hotWorkLevel})
                           </span>
-                        )}
-                        {item.overtimeType === 'weekend' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                            休息日加班
-                          </span>
-                        )}
-                        {item.overtimeType === 'holiday' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                            法定节假日
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 加班时段 */}
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <div className="font-mono text-slate-800 font-semibold flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          <span>{item.startTime} ~ {item.endTime}</span>
-                          <span className="text-[10px] text-blue-600 bg-blue-50 px-1 rounded font-bold">
-                            {item.hours}h
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          {item.date}
-                        </div>
-                      </td>
-
-                      {/* 特种作业与安全监护 */}
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        {item.isSpecialWork ? (
-                          <div>
-                            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
-                              <ShieldAlert className="w-3 h-3 text-amber-600" />
-                              {item.specialWorkType || '特种作业'}
-                            </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
-                              监护人: <span className="text-slate-700 font-medium">{item.safetySupervisor}</span>
-                            </div>
-                          </div>
                         ) : (
-                          <div className="text-slate-400 text-[11px]">
-                            常规作业 · 巡检组
-                          </div>
+                          <span className="text-slate-400 text-[10px]">非动火</span>
                         )}
-                      </td>
-
-                      {/* 审批状态 */}
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        {item.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            待审批
+                        {r.isConfinedSpace && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 w-max">
+                            密闭空间
                           </span>
                         )}
-                        {item.status === 'approved' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            已批准
-                          </span>
-                        )}
-                        {item.status === 'completed' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                            <Check className="w-3 h-3 text-blue-600" />
-                            已完工
-                          </span>
-                        )}
-                        {item.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            <XCircle className="w-3 h-3 text-rose-600" />
-                            已驳回
-                          </span>
-                        )}
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* 操作 */}
-                      <td className="px-3 py-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setDetailRecord(item)}
-                            className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="查看详情"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {item.status === 'pending' && (
-                            <button
-                              onClick={() => setApproveRecord(item)}
-                              className="px-2 py-1 rounded text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              审批
-                            </button>
-                          )}
-
-                          {item.status === 'approved' && (
-                            <button
-                              onClick={() => handleComplete(item)}
-                              className="px-2 py-1 rounded text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
-                              title="确认作业完成并核销"
-                            >
-                              完工核销
-                            </button>
-                          )}
+                    {/* 安全岗位人员 */}
+                    <td className="py-3 px-3">
+                      <div className="font-bold text-slate-800 flex items-center gap-1">
+                        <span>{r.safetyOfficer || '未配备'}</span>
+                      </div>
+                      {r.safetyOfficerPhone && (
+                        <div className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5">
+                          <Phone className="w-2.5 h-2.5" />
+                          <span>{r.safetyOfficerPhone}</span>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                      )}
+                    </td>
+
+                    {/* 在岗状态 & 告警联动 */}
+                    <td className="py-3 px-3 text-center">
+                      {r.safetyStatus === 'absent' ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-600 text-white shadow-xs flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="w-3 h-3" />
+                            缺岗告警
+                          </span>
+                          <button
+                            onClick={() => handleToggleSafetyStatus(r)}
+                            className="text-[10px] text-emerald-700 underline font-bold hover:text-emerald-900 cursor-pointer"
+                          >
+                            核销在岗
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            安全员在岗
+                          </span>
+                          <button
+                            onClick={() => handleToggleSafetyStatus(r)}
+                            className="text-[10px] text-rose-600 hover:text-rose-800 cursor-pointer"
+                          >
+                            标记缺岗
+                          </button>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 填报人 / 电话 */}
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-800">{r.reporter}</div>
+                      <div className="text-[10px] font-mono text-slate-500">{r.reporterPhone}</div>
+                    </td>
+
+                    {/* 操作 */}
+                    <td className="py-3 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => setSelectedRecordForDetail(r)}
+                          className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                          title="查看详情"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecord(r.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                          title="删除记录"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
-
-        {/* 表格底部信息 */}
-        <div className="px-4 py-3 bg-slate-50/60 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <div>
-            共 <span className="font-semibold text-slate-800">{filteredRecords.length}</span> 条加班记录
-            {filteredRecords.length > 0 && (
-              <span className="ml-2 text-slate-400">
-                (核定工时合计: <strong className="text-blue-600">{filteredRecords.reduce((s, r) => s + r.hours, 0)}</strong> 小时)
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span>数据源: 船厂现场考勤与UWB定位协同系统</span>
-            <span>更新频率: 实时</span>
-          </div>
-        </div>
       </div>
 
-      {/* 模态框组 */}
+      {/* 新增加班登记弹窗 */}
       <CreateOvertimeModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateSubmit}
       />
 
+      {/* 加班登记详情弹窗 */}
       <OvertimeDetailModal
-        record={detailRecord}
-        isOpen={!!detailRecord}
-        onClose={() => setDetailRecord(null)}
-        onApprove={(rec) => {
-          setDetailRecord(null);
-          setApproveRecord(rec);
-        }}
-        onReject={(rec) => {
-          setDetailRecord(null);
-          setApproveRecord(rec);
-        }}
-        onComplete={(rec) => {
-          handleComplete(rec);
-          setDetailRecord(null);
-        }}
+        record={selectedRecordForDetail}
+        isOpen={!!selectedRecordForDetail}
+        onClose={() => setSelectedRecordForDetail(null)}
+        onToggleSafetyStatus={handleToggleSafetyStatus}
       />
-
-      <OvertimeApproveModal
-        record={approveRecord}
-        isOpen={!!approveRecord}
-        onClose={() => setApproveRecord(null)}
-        onConfirm={handleApproveConfirm}
-      />
+        </>
+      )}
     </div>
   );
 }

@@ -23,7 +23,7 @@ export interface AlarmRuleVersion {
     };
     notifyWays: string[];
     repeatInterval: '不重复' | '重复告警';
-    effectivePeriod: '自定义' | '永久';
+    effectivePeriod: '自定义' | '永久' | '联动【加班登记单】实际作业时段';
     status: '启用' | '禁用';
   };
 }
@@ -55,10 +55,10 @@ export interface AlarmRuleItem {
   };
   notifyWays: string[];
   repeatInterval: '不重复' | '重复告警';
-  effectivePeriod: '自定义' | '永久';
+  effectivePeriod: '自定义' | '永久' | '联动【加班登记单】实际作业时段';
 }
 
-// 告警策略类型标准枚举选项（附图几项 + 标签防拆）
+// 告警策略类型标准枚举选项（包含安全员缺岗/脱岗）
 export const ALARM_POLICY_TYPES = [
   '人员进入',
   '气体告警',
@@ -66,6 +66,7 @@ export const ALARM_POLICY_TYPES = [
   '厂区吸烟',
   '厂区玩手机',
   '异常停留',
+  '安全员缺岗/脱岗',
   '烟感告警',
   '标签防拆'
 ] as const;

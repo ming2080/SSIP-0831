@@ -317,7 +317,15 @@ export function AlarmConfig() {
                             <span className="text-slate-600 font-medium">{rule.notify}</span>
                           </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap text-slate-500">{rule.period}</td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {rule.period === '联动【加班登记单】实际作业时段' ? (
+                              <span className="text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[11px] inline-flex items-center gap-1" title="联动【加班登记单】实际作业时段">
+                                <Clock className="w-3 h-3 text-blue-600" /> 单据联动
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">{rule.period}</span>
+                            )}
+                          </td>
                           
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${

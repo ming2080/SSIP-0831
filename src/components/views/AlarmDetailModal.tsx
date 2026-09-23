@@ -176,7 +176,13 @@ export function AlarmDetailModal({ isOpen, rule, onClose, onEdit }: AlarmDetailM
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs flex items-center justify-between">
                 <span className="text-slate-500 font-medium">生效周期：</span>
-                <strong className="text-slate-900 font-bold bg-slate-100 px-2.5 py-1 rounded-lg">{snapshot.effectivePeriod}</strong>
+                {snapshot.effectivePeriod === '联动【加班登记单】实际作业时段' ? (
+                  <strong className="text-blue-800 font-bold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" /> 联动【加班登记单】实际作业时段
+                  </strong>
+                ) : (
+                  <strong className="text-slate-900 font-bold bg-slate-100 px-2.5 py-1 rounded-lg">{snapshot.effectivePeriod}</strong>
+                )}
               </div>
 
               <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs flex items-center justify-between">

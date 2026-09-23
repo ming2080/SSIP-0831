@@ -58,7 +58,7 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
   const [notifySoundLight, setNotifySoundLight] = useState(true);
   const [notifySms, setNotifySms] = useState(false);
   const [alarmInterval, setAlarmInterval] = useState<'不重复' | '重复告警'>('不重复');
-  const [effectivePeriod, setEffectivePeriod] = useState<'自定义' | '永久'>('永久');
+  const [effectivePeriod, setEffectivePeriod] = useState<'自定义' | '永久' | '联动【加班登记单】实际作业时段'>('永久');
   const [status, setStatus] = useState<'启用' | '禁用'>('启用');
 
   // 编辑模式特有：变更说明 / 备注
@@ -435,14 +435,33 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
               <select 
                 value={type}
                 onChange={(e) => {
-                  setType(e.target.value);
+                  const selectedType = e.target.value;
+                  setType(selectedType);
                   if (errorMsg) setErrorMsg('');
+
+                  // 自动联动填充针对【安全员缺岗/脱岗】的推荐策略配置
+                  if (selectedType === '安全员缺岗/脱岗') {
+                    if (!name.trim()) {
+                      setName('加班作业现场安全员缺岗/脱岗智能监测规程');
+                    }
+                    setAreaConditions([
+                      { type: '关联业务单据区域', relation: '否', target: '加班单指定施工区域 (如 185-4 / 517-2)' }
+                    ]);
+                    setPersonConditions([
+                      { scope: '单据指定安全员/监护人', relation: '是', target: '单据登记之当班安全员 (如 周卫国)' }
+                    ]);
+                    setConditionType('脱离指定区域时长');
+                    setConditionOperator('大于');
+                    setConditionValue(10);
+                  }
                 }}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-[13px] bg-white cursor-pointer"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-[13px] bg-white cursor-pointer font-medium"
               >
                 <option value="" disabled hidden>请选择策略类型</option>
                 {ALARM_POLICY_TYPES.map(policyType => (
-                  <option key={policyType} value={policyType}>{policyType}</option>
+                  <option key={policyType} value={policyType}>
+                    {policyType} {policyType === '安全员缺岗/脱岗' ? ' (⚡智能单据联动)' : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -460,12 +479,19 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                     value={cond.type}
                     onChange={(e) => {
                       const updated = [...areaConditions];
-                      updated[idx].type = e.target.value;
+                      const selectedVal = e.target.value;
+                      updated[idx].type = selectedVal;
+                      // 自动设置对应默认目标及排除关系
+                      if (selectedVal === '关联业务单据区域') {
+                        updated[idx].relation = '否';
+                        updated[idx].target = '加班单指定施工区域 (如 185-4 / 517-2)';
+                      }
                       setAreaConditions(updated);
                     }}
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
                     <option value="" disabled hidden>请选择区域类型</option>
+                    <option value="关联业务单据区域">关联业务单据区域 (⚡动态读取加班单)</option>
                     <option value="造船台/船坞">造船台/船坞</option>
                     <option value="密闭液货舱室">密闭液货舱室</option>
                     <option value="车间生产线">车间生产线</option>
@@ -480,10 +506,10 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                       updated[idx].relation = e.target.value;
                       setAreaConditions(updated);
                     }}
-                    className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
-                    <option value="是">是</option>
-                    <option value="否">否 (排除)</option>
+                    <option value="是">是 (在区域内)</option>
+                    <option value="否">否 (排除/不在区域内)</option>
                   </select>
 
                   <select 
@@ -493,9 +519,10 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                       updated[idx].target = e.target.value;
                       setAreaConditions(updated);
                     }}
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
                     <option value="" disabled hidden>请选择指定区域</option>
+                    <option value="加班单指定施工区域 (如 185-4 / 517-2)">加班单指定施工区域 (如 185-4 / 517-2)</option>
                     <option value="1号造船台">1号造船台</option>
                     <option value="6号船台（平船台）">6号船台（平船台）</option>
                     <option value="1#液货舱">1#液货舱</option>
@@ -543,12 +570,17 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                     value={cond.scope}
                     onChange={(e) => {
                       const updated = [...personConditions];
-                      updated[idx].scope = e.target.value;
+                      const selectedScope = e.target.value;
+                      updated[idx].scope = selectedScope;
+                      if (selectedScope === '单据指定安全员/监护人') {
+                        updated[idx].target = '单据登记之当班安全员 (如 周卫国)';
+                      }
                       setPersonConditions(updated);
                     }}
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
                     <option value="" disabled hidden>请选择工人人员范围</option>
+                    <option value="单据指定安全员/监护人">单据指定安全员/监护人 (⚡精准锁定单据主体)</option>
                     <option value="工种类别">工种类别</option>
                     <option value="作业班组">作业班组</option>
                     <option value="部门">部门</option>
@@ -563,10 +595,10 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                       updated[idx].relation = e.target.value;
                       setPersonConditions(updated);
                     }}
-                    className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
-                    <option value="是">是</option>
-                    <option value="否">否 (排除)</option>
+                    <option value="是">是 (包含目标)</option>
+                    <option value="否">否 (排除目标)</option>
                   </select>
 
                   <select 
@@ -576,9 +608,10 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
                       updated[idx].target = e.target.value;
                       setPersonConditions(updated);
                     }}
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
                   >
                     <option value="" disabled hidden>请选择具体对象</option>
+                    <option value="单据登记之当班安全员 (如 周卫国)">单据登记之当班安全员 (如 周卫国)</option>
                     <option value="焊接工">焊接工</option>
                     <option value="装配钳工">装配钳工</option>
                     <option value="探伤质检员">探伤质检员</option>
@@ -620,9 +653,11 @@ export function AlarmFormModal({ isOpen, onClose, onSubmit, editRule }: AlarmFor
               <select 
                 value={conditionType}
                 onChange={(e) => setConditionType(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white"
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-[13px] bg-white font-medium"
               >
                 <option value="" disabled hidden>请选择策略条件</option>
+                <option value="脱离指定区域时长">脱离指定区域时长 (缺岗/脱岗判别)</option>
+                <option value="连续缺岗时长">连续缺岗时长</option>
                 <option value="滞留超时时长">滞留超时时长</option>
                 <option value="可燃气体超标浓度">可燃气体超标浓度</option>
                 <option value="静止不活动时长">静止不活动时长</option>

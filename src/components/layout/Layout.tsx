@@ -67,7 +67,7 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
           onNavigateToTeams={() => setCurrentView('team_mgmt')}
         />
       );
-      case 'overtime': return <OvertimeManagement />;
+      case 'overtime': return <OvertimeManagement onChangeView={(view) => setCurrentView(view)} />;
       case 'team_mgmt': return (
         <TeamManagement 
           onNavigateToPersonnel={(deptId) => {

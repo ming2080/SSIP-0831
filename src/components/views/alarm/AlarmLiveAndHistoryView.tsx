@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   RotateCw, 
@@ -21,7 +21,7 @@ import {
   Building2
 } from 'lucide-react';
 import { AlarmEventRecord, AlarmAttachment } from '@/src/types/alarmRecord';
-import { INITIAL_ALARM_RECORDS } from '@/src/data/alarmRecordData';
+import { INITIAL_ALARM_RECORDS, getStoredAlarmRecords, saveStoredAlarmRecords } from '@/src/data/alarmRecordData';
 import { AlarmRecordDetailModal } from './AlarmRecordDetailModal';
 import { AlarmSimpleProcessModal } from './AlarmSimpleProcessModal';
 import { AlarmRuleItem } from '@/src/data/alarmData';
@@ -76,7 +76,18 @@ interface AlarmLiveAndHistoryViewProps {
 
 export function AlarmLiveAndHistoryView({ onViewRulePolicy }: AlarmLiveAndHistoryViewProps) {
   // 数据集状态
-  const [records, setRecords] = useState<AlarmEventRecord[]>(INITIAL_ALARM_RECORDS);
+  const [records, setRecords] = useState<AlarmEventRecord[]>(() => getStoredAlarmRecords());
+
+  // 监听广播联动更新
+  useEffect(() => {
+    const handleAlarmUpdate = (e: any) => {
+      if (e.detail?.records) {
+        setRecords(e.detail.records);
+      }
+    };
+    window.addEventListener('alarm_records_updated', handleAlarmUpdate);
+    return () => window.removeEventListener('alarm_records_updated', handleAlarmUpdate);
+  }, []);
 
   // 弹窗状态
   const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<AlarmEventRecord | null>(null);
