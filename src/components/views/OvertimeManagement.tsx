@@ -377,7 +377,7 @@ export function OvertimeManagement({ onChangeView }: OvertimeManagementProps) {
                 检测到当前有 <span className="underline decoration-2 font-mono text-sm">{stats.absentAlertCount}</span> 项加班现场缺少安全岗位人员监护在岗！
               </p>
               <p className="text-rose-700 text-[11px] mt-0.5">
-                已自动向【告警管理中心】推送安全缺岗事件，请即时派员补位核销或联系填报人停工整改。
+                已自动向【告警管理中心】推送安全缺岗事件，请即时派员补位核销或联系带班人停工整改。
               </p>
             </div>
           </div>
@@ -502,7 +502,7 @@ export function OvertimeManagement({ onChangeView }: OvertimeManagementProps) {
                 <th className="py-3 px-3">特种管控</th>
                 <th className="py-3 px-3">安全岗位人员</th>
                 <th className="py-3 px-3 text-center">在岗状态 & 告警联动</th>
-                <th className="py-3 px-3">填报人 / 电话</th>
+                <th className="py-3 px-3">带班人/电话</th>
                 <th className="py-3 px-3 w-28 text-center">操作</th>
               </tr>
             </thead>

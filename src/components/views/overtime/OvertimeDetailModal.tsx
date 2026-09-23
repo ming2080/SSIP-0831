@@ -214,10 +214,10 @@ export function OvertimeDetailModal({
             </p>
           </div>
 
-          {/* 填报人联系信息 */}
+          {/* 带班人联系信息 */}
           <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/80 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">填报人：</span>
+              <span className="text-slate-400">带班人：</span>
               <span className="font-bold text-slate-800">{record.reporter}</span>
             </div>
             <div className="flex items-center gap-2">

@@ -383,17 +383,17 @@ export function CreateOvertimeModal({ isOpen, onClose, onSubmit }: CreateOvertim
             />
           </div>
 
-          {/* 填报人 & 填报人电话 */}
+          {/* 带班人 & 带班人电话 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                <span className="text-rose-500 mr-1">*</span>填报人
+                <span className="text-rose-500 mr-1">*</span>带班人
               </label>
               <input
                 type="text"
                 value={reporter}
                 onChange={(e) => setReporter(e.target.value)}
-                placeholder="填报人姓名"
+                placeholder="带班人姓名"
                 className="w-full h-8 px-2.5 rounded-md border border-slate-300 bg-white text-xs focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -401,13 +401,13 @@ export function CreateOvertimeModal({ isOpen, onClose, onSubmit }: CreateOvertim
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                <span className="text-rose-500 mr-1">*</span>填报人电话
+                <span className="text-rose-500 mr-1">*</span>带班人电话
               </label>
               <input
                 type="text"
                 value={reporterPhone}
                 onChange={(e) => setReporterPhone(e.target.value)}
-                placeholder="填报人联系电话"
+                placeholder="带班人联系电话"
                 className="w-full h-8 px-2.5 rounded-md border border-slate-300 bg-white text-xs focus:ring-2 focus:ring-blue-500 font-mono"
                 required
               />
