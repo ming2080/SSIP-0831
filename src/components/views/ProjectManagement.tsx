@@ -553,6 +553,16 @@ export function ProjectManagement() {
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
           </div>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'project_overview' } }));
+            }}
+            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 px-3 py-1.5 rounded-lg flex items-center transition-colors text-xs font-semibold cursor-pointer"
+            title="查看在建造船工程总览与里程碑大屏"
+          >
+            <Compass className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+            进度里程碑总览
+          </button>
           <button 
             onClick={() => {
               setEditingProject(null);

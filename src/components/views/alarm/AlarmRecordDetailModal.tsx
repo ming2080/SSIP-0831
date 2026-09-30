@@ -10,7 +10,10 @@ import {
   Play,
   Image as ImageIcon,
   Video,
-  Paperclip
+  Paperclip,
+  Smartphone,
+  MessageSquare,
+  FileCheck
 } from 'lucide-react';
 import { AlarmEventRecord, AlarmAttachment } from '@/src/types/alarmRecord';
 
@@ -473,6 +476,71 @@ export function AlarmRecordDetailModal({
                 )}
               </div>
 
+              {/* 5. 移动端H5解除通知回执与短信通知明细 (若已闭环生成) */}
+              {record.releaseReceipt && (
+                <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                      <FileCheck className="w-4 h-4 text-emerald-600" />
+                      <span>移动端H5现场解除通知回执</span>
+                    </div>
+                    <span className="font-mono text-[11px] bg-white text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300 font-bold">
+                      回执号: {record.releaseReceipt.receiptNo}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 text-[11px]">解除时间: </span>
+                      <span className="font-mono font-semibold text-slate-800">{record.releaseReceipt.releasedAt}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[11px]">现场处置人: </span>
+                      <span className="font-semibold text-slate-800">{record.releaseReceipt.handlerName} ({record.releaseReceipt.handlerPhone})</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[11px]">复测指标: </span>
+                      <span className="font-mono font-bold text-emerald-700">{record.releaseReceipt.retestMetrics}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[11px]">处置结论: </span>
+                      <span className="font-bold text-slate-800">{record.releaseReceipt.releaseTypeLabel}</span>
+                    </div>
+                  </div>
+
+                  {/* 短信通知送达情况 */}
+                  {record.releaseReceipt.notifiedPersons && record.releaseReceipt.notifiedPersons.length > 0 && (
+                    <div className="pt-2 border-t border-emerald-200/60">
+                      <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1 mb-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>已发送告警解除短信通知 ({record.releaseReceipt.notifiedPersons.length}人):</span>
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                        {record.releaseReceipt.notifiedPersons.map((p, idx) => (
+                          <div key={idx} className="bg-white p-2 rounded-lg border border-emerald-200/80 text-[11px] space-y-0.5">
+                            <div className="font-bold text-slate-800 flex items-center justify-between">
+                              <span>{p.name}</span>
+                              <span className="text-[10px] text-emerald-600">已送达</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono">{p.phone}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 签名展示 */}
+                  {record.releaseReceipt.signatureUrl && (
+                    <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500">处置责任人手写签字:</span>
+                      <div className="w-24 h-8 bg-white border border-emerald-200 rounded p-0.5 flex items-center justify-center">
+                        <img src={record.releaseReceipt.signatureUrl} alt="签名" className="max-h-full max-w-full object-contain" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           </div>
 
@@ -676,25 +744,39 @@ export function AlarmRecordDetailModal({
         </div>
 
         {/* 底部关闭与操作栏 */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+          {/* 左侧：手机端H5处置通道快捷入口 */}
           <button
-            onClick={onClose}
-            className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+            onClick={() => {
+              onClose();
+              window.dispatchEvent(new CustomEvent('navigate_mobile_alarm', { detail: { alarmId: record.id } }));
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-98"
           >
-            关闭
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>{!isClosed ? '📱 手机端H5现场处理' : '📱 手机端H5回执单'}</span>
           </button>
-          {onOpenProcess && !isClosed && (
+
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                onClose();
-                onOpenProcess(record);
-              }}
-              className="px-4 py-2 bg-[#1677ff] hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              onClick={onClose}
+              className="px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              立即处理
+              关闭
             </button>
-          )}
+            {onOpenProcess && !isClosed && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenProcess(record);
+                }}
+                className="px-4 py-2 bg-[#1677ff] hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                PC直接处理
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 全屏图片/视频预览灯箱 */}

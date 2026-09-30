@@ -1,7 +1,9 @@
 export type ViewType = 
   | 'dashboard' 
+  | 'project_overview'
   | 'projects' 
   | 'personnel' 
+  | 'personnel_track'
   | 'personnel_mgmt'
   | 'overtime'
   | 'team_mgmt'
@@ -9,6 +11,7 @@ export type ViewType =
   | 'user_mgmt'
   | 'fence' 
   | 'alarms' 
+  | 'alarm_analysis'
   | 'devices'
   | 'models';
 

@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ViewType } from '@/src/types';
 import { Dashboard } from '../views/Dashboard';
+import { ProjectOverviewDashboard } from '../views/ProjectOverviewDashboard';
 import { ProjectManagement } from '../views/ProjectManagement';
 import { PersonnelTracking } from '../views/PersonnelTracking';
 import { ElectronicFence } from '../views/ElectronicFence';
@@ -40,7 +41,8 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
   }, []);
 
   const handleNavigate = (view: ViewType, extra?: { personId?: string; autoPlay?: boolean }) => {
-    if (view === 'personnel' && extra) {
+    if (typeof view !== 'string') return;
+    if ((view === 'personnel' || view === 'personnel_track') && extra) {
       setPersonnelNavState(extra);
     }
     setCurrentView(view);
@@ -49,12 +51,21 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard': return <Dashboard onExit={() => setCurrentView('projects')} onNavigate={handleNavigate} />;
+      case 'project_overview': return <ProjectOverviewDashboard onNavigate={handleNavigate} />;
       case 'projects': return <ProjectManagement />;
       case 'models': return <ShipModelManagement />;
       case 'personnel': return (
         <PersonnelTracking 
+          initialMode="position"
           initialPersonId={personnelNavState?.personId} 
-          initialAutoPlay={personnelNavState?.autoPlay} 
+          initialAutoPlay={false} 
+        />
+      );
+      case 'personnel_track': return (
+        <PersonnelTracking 
+          initialMode="track"
+          initialPersonId={personnelNavState?.personId} 
+          initialAutoPlay={personnelNavState?.autoPlay ?? false} 
         />
       );
       case 'personnel_mgmt': return (
@@ -88,7 +99,8 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
         />
       );
       case 'fence': return <ElectronicFence />;
-      case 'alarms': return <AlarmConfig />;
+      case 'alarm_analysis': return <AlarmConfig initialTab="analytics" />;
+      case 'alarms': return <AlarmConfig initialTab="rules" />;
       case 'devices': return <DeviceManagement />;
       default: return <Dashboard />;
     }
@@ -97,17 +109,20 @@ export function Layout({ currentUser, onLogout }: LayoutProps = {}) {
   const getViewTitle = () => {
     switch (currentView) {
       case 'dashboard': return '驾驶舱';
+      case 'project_overview': return '项目总览';
       case 'projects': return '项目管理';
-      case 'models': return '航模管理';
-      case 'personnel': return '人员定位';
       case 'personnel_mgmt': return '人员管理';
+      case 'models': return '船模管理';
+      case 'personnel': return '人员定位';
+      case 'personnel_track': return '人员轨迹';
+      case 'alarm_analysis': return '告警分析';
+      case 'alarms': return '告警配置';
+      case 'fence': return '电子围栏';
+      case 'tags': return '定位标签';
+      case 'devices': return '设备管理';
       case 'overtime': return '加班管理';
-      case 'tags': return '定位标签管理';
       case 'team_mgmt': return '组织管理';
       case 'user_mgmt': return '用户管理';
-      case 'fence': return '电子围栏';
-      case 'alarms': return '告警配置';
-      case 'devices': return '设备管理';
       default: return '智慧船厂';
     }
   };

@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Sparkles,
   Layers,
+  Smartphone,
   X
 } from 'lucide-react';
 
@@ -85,6 +86,18 @@ export function Header({ title, currentUser, onLogout }: HeaderProps) {
             className="pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50 text-slate-800 w-44 md:w-52 placeholder-slate-400 transition-all"
           />
         </div>
+
+        {/* 移动端入口快捷按钮 */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('navigate_mobile_alarm', { detail: { alarmId: 'ALM-20260906-001' } }));
+          }}
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition-colors cursor-pointer"
+          title="移动端"
+        >
+          <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+          <span>移动端</span>
+        </button>
 
         {/* 消息通知中心 */}
         <div className="relative" ref={notifMenuRef}>

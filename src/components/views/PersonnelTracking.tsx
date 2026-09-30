@@ -70,9 +70,14 @@ import bulkShipImg from '@/src/assets/images/bulk_ship_model_1787972609425.jpg';
 interface PersonnelTrackingProps {
   initialPersonId?: string;
   initialAutoPlay?: boolean;
+  initialMode?: 'position' | 'track';
 }
 
-export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: PersonnelTrackingProps = {}) {
+export function PersonnelTracking({ 
+  initialPersonId, 
+  initialAutoPlay = false,
+  initialMode = 'position'
+}: PersonnelTrackingProps = {}) {
   // 选中的人员
   const [selectedPersonId, setSelectedPersonId] = useState<string>(initialPersonId || 'EMP-001');
   // 项目关联人员筛选 ('all' 或具体 projectId)
@@ -97,8 +102,8 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
   // 造船项目下拉选择器展开状态
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState<boolean>(false);
 
-  // 地图右侧轨迹时间轴面板展开状态 (默认开启)
-  const [isTimelinePanelOpen, setIsTimelinePanelOpen] = useState<boolean>(true);
+  // 地图右侧轨迹时间轴面板展开状态 (轨迹模式默认开启，实时定位模式默认折叠)
+  const [isTimelinePanelOpen, setIsTimelinePanelOpen] = useState<boolean>(initialMode === 'track');
 
   // 自定义时段下拉设置面板展开状态
   const [isCustomTimeOpen, setIsCustomTimeOpen] = useState<boolean>(false);
@@ -106,7 +111,7 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
   // 地图图层控制开关
   const [showFences, setShowFences] = useState<boolean>(true);
   const [showBasestations, setShowBasestations] = useState<boolean>(true); // 定位基站开关
-  const [showTrajectoryPath, setShowTrajectoryPath] = useState<boolean>(true);
+  const [showTrajectoryPath, setShowTrajectoryPath] = useState<boolean>(initialMode === 'track');
   const [showWorkerAvatars, setShowWorkerAvatars] = useState<boolean>(true);
 
   // 网页级全屏查看控制
@@ -125,6 +130,21 @@ export function PersonnelTracking({ initialPersonId, initialAutoPlay = false }: 
 
   // 轨迹回放控制
   const [isPlayingTrajectory, setIsPlayingTrajectory] = useState<boolean>(initialAutoPlay);
+
+  // 响应 initialMode 切换
+  useEffect(() => {
+    if (initialMode === 'position') {
+      setIsTimelinePanelOpen(false);
+      setShowTrajectoryPath(false);
+      setIsPlayingTrajectory(false);
+    } else if (initialMode === 'track') {
+      setIsTimelinePanelOpen(true);
+      setShowTrajectoryPath(true);
+      if (initialAutoPlay) {
+        setIsPlayingTrajectory(true);
+      }
+    }
+  }, [initialMode, initialAutoPlay]);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   

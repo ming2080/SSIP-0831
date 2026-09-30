@@ -12,15 +12,21 @@ import {
   GitBranch, 
   ShieldAlert,
   Clock,
-  Filter
+  Filter,
+  BarChart3
 } from 'lucide-react';
 import { INITIAL_ALARM_RULES, AlarmRuleItem, ALARM_POLICY_TYPES } from '@/src/data/alarmData';
 import { AlarmFormModal } from './AlarmFormModal';
 import { AlarmDetailModal } from './AlarmDetailModal';
 import { AlarmLiveAndHistoryView } from './alarm/AlarmLiveAndHistoryView';
+import { AlarmAnalyticsDashboard } from './alarm/AlarmAnalyticsDashboard';
 
-export function AlarmConfig() {
-  const [activeTab, setActiveTab] = useState<'rules' | 'records'>('rules');
+interface AlarmConfigProps {
+  initialTab?: 'analytics' | 'rules' | 'records';
+}
+
+export function AlarmConfig({ initialTab }: AlarmConfigProps) {
+  const [activeTab, setActiveTab] = useState<'analytics' | 'rules' | 'records'>(initialTab || 'analytics');
   const [rules, setRules] = useState<AlarmRuleItem[]>(INITIAL_ALARM_RULES);
   
   // 模态框状态
@@ -111,13 +117,24 @@ export function AlarmConfig() {
         <div className="flex border-b border-slate-200 bg-slate-50 shrink-0">
           <button 
             className={`px-5 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center transition-colors cursor-pointer ${
+              activeTab === 'analytics' 
+                ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-2xs' 
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+            }`}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <BarChart3 className="w-4 h-4 mr-2 text-blue-600" />
+            告警态势与数据分析
+          </button>
+          <button 
+            className={`px-5 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center transition-colors cursor-pointer ${
               activeTab === 'rules' 
                 ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-2xs' 
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
             }`}
             onClick={() => setActiveTab('rules')}
           >
-            <Settings className="w-4 h-4 mr-2 text-blue-600" />
+            <Settings className="w-4 h-4 mr-2" />
             告警规则配置与版本管理
           </button>
           <button 
@@ -135,6 +152,15 @@ export function AlarmConfig() {
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
+          {activeTab === 'analytics' && (
+            <AlarmAnalyticsDashboard
+              onNavigateToRules={() => setActiveTab('rules')}
+              onNavigateToRecords={(filterType) => {
+                setActiveTab('records');
+              }}
+            />
+          )}
+
           {activeTab === 'rules' && (
             <div className="flex flex-col h-full p-5 bg-white">
               
@@ -403,6 +429,7 @@ export function AlarmConfig() {
           {activeTab === 'records' && (
             <AlarmLiveAndHistoryView 
               rules={rules}
+              onNavigateToAnalytics={() => setActiveTab('analytics')}
               onViewRulePolicy={(policyName, versionId) => {
                 const targetRule = rules.find(r => r.name === policyName);
                 if (targetRule) {

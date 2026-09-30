@@ -100,4 +100,45 @@ export interface AlarmEventRecord {
   reviewNotes?: string; // 复核审核意见
   attachments?: AlarmAttachment[]; // 现场处理上传的图片或视频附件 (最大50MB)
   workflowLogs: AlarmWorkflowStep[]; // 表单流转审批轨迹
+  releaseReceipt?: AlarmReleaseReceipt; // 现场处理生成的解除回执
+}
+
+export interface SmsNotificationRecord {
+  id: string;
+  alarmId: string;
+  type: 'alarm_triggered' | 'alarm_upgraded' | 'alarm_released' | 'auth_code';
+  recipientName: string;
+  recipientPhone: string;
+  recipientRole: string;
+  content: string;
+  actionUrl?: string;
+  sentAt: string;
+  deliveryStatus: 'sent' | 'delivered' | 'failed';
+}
+
+export interface AlarmReleaseReceipt {
+  receiptNo: string;
+  alarmId: string;
+  alarmTitle: string;
+  areaName: string;
+  projectName?: string;
+  releasedAt: string;
+  handlerName: string;
+  handlerPhone: string;
+  handlerDept: string;
+  releaseType: 'hazard_cleared' | 'false_alarm_cleared' | 'emergency_escalated';
+  releaseTypeLabel: string;
+  causeSummary: string;
+  measureSummary: string;
+  retestMetrics?: string;
+  signatureUrl?: string;
+  attachments: AlarmAttachment[];
+  notifiedPersons: Array<{
+    name: string;
+    role: string;
+    phone: string;
+    smsContent?: string;
+    status: 'delivered' | 'sent';
+    time: string;
+  }>;
 }
